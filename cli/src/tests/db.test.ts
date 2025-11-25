@@ -7,7 +7,7 @@ Deno.env.set("LOGGERHEAD_DB_PATH", ":memory:");
 // Dynamic import to ensure env var is set before module loads
 // We trigger the side-effect of client.ts (creating DB connection)
 await import("../db/client.ts");
-const { DbService } = await import("./db.ts");
+const { DbService } = await import("../services/db.ts");
 
 Deno.test("DbService - Project Management", async (t) => {
     // @ts-ignore: Dynamic import returns any

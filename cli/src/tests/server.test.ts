@@ -1,5 +1,5 @@
 import { assertEquals, assertExists } from "@std/assert";
-import { createServer } from "./server.ts";
+import { createServer } from "../mcp/server.ts";
 import { migrate } from "../db/migrate.ts";
 
 // Set up environment to use in-memory DB

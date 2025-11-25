@@ -19,41 +19,17 @@ _(Note: [Deno](https://docs.deno.com/runtime/fundamentals/installation/) is only
 
 Follow these steps to get Loggerhead running on your machine.
 
-### 1. Build the Loggerhead CLI
+### 1. Install the Tool
 
-Compile the tool into a single executable file in the `cli/build` directory:
+Download the `loggerhead` binary from the releases page and move it to a directory in your PATH (e.g., `/usr/local/bin`).
 
-```bash
-cd cli
-mkdir -p build
-deno compile --allow-net --allow-read --allow-env --allow-run --allow-write --output build/loggerhead src/main.ts
-```
-
-### 2. Install the Tool
-
-To make the `loggerhead` command available everywhere, you can add the build directory to your shell configuration.
-
-**For Zsh (macOS default):**
+**Verify installation:**
 
 ```bash
-echo 'export PATH="'$PWD'/cli/build:$PATH"' >> ~/.zshrc
-source ~/.zshrc
+loggerhead --help
 ```
 
-**For Bash:**
-
-```bash
-echo 'export PATH="'$PWD'/cli/build:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-_Alternatively, you can move the binary to a system folder:_
-
-```bash
-sudo mv cli/build/loggerhead /usr/local/bin/
-```
-
-### 3. Initialize the Database
+### 2. Initialize the Database
 
 Run this command to set up the database tables (SQLite):
 
