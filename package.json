@@ -1,0 +1,17 @@
+{
+  "name": "loggerhead",
+  "version": "0.1.0",
+  "description": "Smart log aggregation tool and MCP server",
+  "bin": {
+    "loggerhead": "./bin/loggerhead.js"
+  },
+  "scripts": {
+    "build": "dnt"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "author": "Onvo AI",
+  "license": "MIT"
+}

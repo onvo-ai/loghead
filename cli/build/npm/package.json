@@ -1,0 +1,29 @@
+{
+  "name": "@onvo-ai/loggerhead",
+  "version": "0.1.0",
+  "description": "Smart log aggregation tool and MCP server",
+  "bin": {
+    "loggerhead": "./bin/loggerhead"
+  },
+  "files": [
+    "bin"
+  ],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "scripts": {
+    "postinstall": "echo 'Note: This package contains a prebuilt binary for macOS ARM64.'"
+  },
+  "author": "Onvo AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onvo-ai/loggerhead.git"
+  },
+  "bugs": {
+    "url": "https://github.com/onvo-ai/loggerhead/issues"
+  }
+}
