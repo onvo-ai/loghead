@@ -1,7 +1,15 @@
 {
   "name": "@loghead/mcp",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Standalone MCP Server for Loghead",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onvo-ai/loghead.git"
+  },
+  "homepage": "https://github.com/onvo-ai/loghead#readme",
+  "bugs": {
+    "url": "https://github.com/onvo-ai/loghead/issues"
+  },
   "main": "dist/main.js",
   "bin": {
     "loghead-mcp": "./dist/main.js"

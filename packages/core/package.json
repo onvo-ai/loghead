@@ -1,7 +1,15 @@
 {
   "name": "@loghead/core",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Core API and Database for Loghead",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onvo-ai/loghead.git"
+  },
+  "homepage": "https://github.com/onvo-ai/loghead#readme",
+  "bugs": {
+    "url": "https://github.com/onvo-ai/loghead/issues"
+  },
   "main": "dist/index.js",
   "bin": {
     "loghead": "./dist/cli_main.js"
