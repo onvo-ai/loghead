@@ -21,10 +21,8 @@ class DbService {
         return true;
     }
     listProjects() {
-        console.error("Listing projects...");
         try {
             const projects = client_1.db.prepare("SELECT * FROM projects ORDER BY created_at DESC").all();
-            console.error(`Found ${projects.length} projects.`);
             return projects.map((p) => {
                 const streams = client_1.db.prepare("SELECT * FROM data_streams WHERE project_id = ?").all(p.id);
                 return { ...p, streams };

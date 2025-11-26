@@ -23,8 +23,9 @@ async function main() {
             await migrate(false); // Run migrations silently
 
             const token = await auth.getOrCreateMcpToken();
-            console.log(chalk.bold.yellow(`\n🔑 MCP Server Token: ${token}`));
-            console.log(chalk.dim("Use this token for the MCP Server or other admin integrations.\n"));
+            console.log(chalk.bold.yellow(`\n🔑 MCP Server Token:`));
+            console.log(chalk.dim("\nUse this token for the MCP Server or other admin integrations.\n"));
+            console.log(chalk.yellow(`${token}`));
 
             await startApiServer(db);
         })

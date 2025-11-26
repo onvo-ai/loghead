@@ -1,14 +1,7 @@
 #!/usr/bin/env node
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-    CallToolRequestSchema,
-    ListToolsRequestSchema,
-    ListResourcesRequestSchema,
-    ReadResourceRequestSchema,
-    ErrorCode,
-    McpError,
-} from "@modelcontextprotocol/sdk/types";
+import { z } from "zod";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -24,133 +17,84 @@ async function fetchApi(path: string, options: RequestInit = {}) {
     return await res.json();
 }
 
-// Define types locally since we don't import from Core
+// Define types locally
 interface Project { id: string; name: string; }
 interface Stream { id: string; name: string; type: string; }
-interface Log { content: string; timestamp: string; metadata: Record<string, unknown>; }
 
 async function main() {
-    const server = new Server(
-        { name: "loghead-mcp", version: "0.1.0" },
-        { capabilities: { resources: {}, tools: {} } }
-    );
-
-    // List Resources (Projects and Streams)
-    server.setRequestHandler(ListResourcesRequestSchema, async () => {
-        try {
-            const projects: Project[] = await fetchApi("/projects");
-            return {
-                resources: projects.map((p) => ({
-                    uri: `loghead://project/${p.id}`,
-                    name: p.name,
-                    mimeType: "application/json",
-                    description: `Project: ${p.name}`,
-                })),
-            };
-        } catch (error) {
-            console.error("Error listing resources:", error);
-            return { resources: [] };
-        }
+    const server = new McpServer({
+        name: "loghead-mcp",
+        version: "0.1.0"
     });
 
-    // Read Resource (Get Project details or Stream details)
-    server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-        const uri = request.params.uri;
-
-        if (uri.startsWith("loghead://project/")) {
-            const id = uri.split("/").pop();
+    // Resources
+    server.resource(
+        "project",
+        "loghead://project/{id}",
+        async (uri) => {
+            const id = uri.href.split("/").pop() as string;
             try {
                 const streams: Stream[] = await fetchApi(`/streams?projectId=${id}`);
                 return {
-                    contents: [
-                        {
-                            uri: uri,
-                            mimeType: "application/json",
-                            text: JSON.stringify(streams, null, 2),
-                        },
-                    ],
+                    contents: [{
+                        uri: uri.href,
+                        mimeType: "application/json",
+                        text: JSON.stringify(streams, null, 2),
+                    }]
                 };
             } catch (error) {
-                throw new McpError(ErrorCode.InternalError, `Failed to fetch project streams: ${error}`);
+                throw new Error(`Failed to fetch project streams: ${error}`);
             }
         }
+    );
 
-        throw new McpError(ErrorCode.InvalidRequest, "Unknown resource");
-    });
-
-    // List Tools
-    server.setRequestHandler(ListToolsRequestSchema, () => {
-        return Promise.resolve({
-            tools: [
-                {
-                    name: "list_projects",
-                    description: "Lists all the projects and their streams",
-                    inputSchema: { type: "object", properties: {} },
-                },
-                {
-                    name: "query_logs",
-                    description: "Search or retrieve logs from a specific stream",
-                    inputSchema: {
-                        type: "object",
-                        properties: {
-                            streamId: { type: "string" },
-                            query: { type: "string" },
-                            limit: { type: "number" },
-                        },
-                        required: ["streamId"],
-                    },
-                }
-            ],
-        });
-    });
-
-    // Call Tool
-    server.setRequestHandler(CallToolRequestSchema, async (request) => {
-        const name = request.params.name;
-        const args = request.params.arguments || {};
-
-        switch (name) {
-            case "list_projects": {
-                try {
-                    const projects = await fetchApi("/projects");
-                    // Fetch streams for each project to be helpful
-                    const fullData = await Promise.all(projects.map(async (p: Project) => {
-                        try {
-                            const streams = await fetchApi(`/streams?projectId=${p.id}`);
-                            return { ...p, streams };
-                        } catch {
-                            return p;
-                        }
-                    }));
-
-                    return { content: [{ type: "text", text: JSON.stringify(fullData, null, 2) }] };
-                } catch (error) {
-                    throw new McpError(ErrorCode.InternalError, `Failed to list projects: ${error}`);
-                }
+    // Tools
+    server.tool(
+        "list_projects",
+        "Lists all the projects and their streams",
+        {}, // No args
+        async () => {
+            try {
+                const projects = await fetchApi("/projects");
+                const fullData = await Promise.all(projects.map(async (p: Project) => {
+                    try {
+                        const streams = await fetchApi(`/streams?projectId=${p.id}`);
+                        return { ...p, streams };
+                    } catch {
+                        return p;
+                    }
+                }));
+                return { content: [{ type: "text", text: JSON.stringify(fullData, null, 2) }] };
+            } catch (error) {
+                return { content: [{ type: "text", text: `Error: ${error}` }], isError: true };
             }
-            case "query_logs": {
-                const streamId = args.streamId as string;
-                if (!streamId) throw new McpError(ErrorCode.InvalidParams, "Stream ID is required");
-                const query = args.query as string | undefined;
-                const limit = (args.limit as number) || 20;
-
-                try {
-                    let url = `/logs?streamId=${streamId}&limit=${limit}`;
-                    if (query) url += `&q=${encodeURIComponent(query)}`;
-
-                    const logs = await fetchApi(url);
-                    return { content: [{ type: "text", text: JSON.stringify(logs, null, 2) }] };
-                } catch (error) {
-                    throw new McpError(ErrorCode.InternalError, `Failed to query logs: ${error}`);
-                }
-            }
-            default:
-                throw new McpError(ErrorCode.MethodNotFound, "Unknown tool");
         }
-    });
+    );
+
+    server.tool(
+        "query_logs",
+        "Search or retrieve logs from a specific stream",
+        {
+            streamId: z.string().describe("The Stream ID"),
+            query: z.string().optional().describe("Search query"),
+            limit: z.number().optional().default(20).describe("Max logs to return")
+        },
+        async ({ streamId, query, limit }) => {
+            try {
+                let url = `/logs?streamId=${streamId}&limit=${limit}`;
+                if (query) url += `&q=${encodeURIComponent(query)}`;
+
+                const logs = await fetchApi(url);
+                return { content: [{ type: "text", text: JSON.stringify(logs, null, 2) }] };
+            } catch (error) {
+                return { content: [{ type: "text", text: `Error: ${error}` }], isError: true };
+            }
+        }
+    );
 
     const transport = new StdioServerTransport();
     await server.connect(transport);
+    console.error("Loghead MCP Server running on stdio");
 }
 
 main().catch(console.error);

@@ -28,10 +28,8 @@ export class DbService {
     }
 
     listProjects(): Project[] {
-        console.error("Listing projects...");
         try {
             const projects = (db.prepare("SELECT * FROM projects ORDER BY created_at DESC") as unknown as DbAny).all();
-            console.error(`Found ${projects.length} projects.`);
             return projects.map((p: Project) => {
                 const streams = (db.prepare("SELECT * FROM data_streams WHERE project_id = ?") as unknown as DbAny).all(p.id);
                 return { ...p, streams };

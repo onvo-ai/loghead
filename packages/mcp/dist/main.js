@@ -4,9 +4,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const index_js_1 = require("@modelcontextprotocol/sdk/server/index.js");
+const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
-const types_1 = require("@modelcontextprotocol/sdk/types");
+const zod_1 = require("zod");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const API_URL = process.env.LOGHEAD_API_URL || "http://localhost:4567/api";
@@ -19,119 +19,65 @@ async function fetchApi(path, options = {}) {
     return await res.json();
 }
 async function main() {
-    const server = new index_js_1.Server({ name: "loghead-mcp", version: "0.1.0" }, { capabilities: { resources: {}, tools: {} } });
-    // List Resources (Projects and Streams)
-    server.setRequestHandler(types_1.ListResourcesRequestSchema, async () => {
+    const server = new mcp_js_1.McpServer({
+        name: "loghead-mcp",
+        version: "0.1.0"
+    });
+    // Resources
+    server.resource("project", "loghead://project/{id}", async (uri) => {
+        const id = uri.href.split("/").pop();
         try {
-            const projects = await fetchApi("/projects");
+            const streams = await fetchApi(`/streams?projectId=${id}`);
             return {
-                resources: projects.map((p) => ({
-                    uri: `loghead://project/${p.id}`,
-                    name: p.name,
-                    mimeType: "application/json",
-                    description: `Project: ${p.name}`,
-                })),
+                contents: [{
+                        uri: uri.href,
+                        mimeType: "application/json",
+                        text: JSON.stringify(streams, null, 2),
+                    }]
             };
         }
         catch (error) {
-            console.error("Error listing resources:", error);
-            return { resources: [] };
+            throw new Error(`Failed to fetch project streams: ${error}`);
         }
     });
-    // Read Resource (Get Project details or Stream details)
-    server.setRequestHandler(types_1.ReadResourceRequestSchema, async (request) => {
-        const uri = request.params.uri;
-        if (uri.startsWith("loghead://project/")) {
-            const id = uri.split("/").pop();
-            try {
-                const streams = await fetchApi(`/streams?projectId=${id}`);
-                return {
-                    contents: [
-                        {
-                            uri: uri,
-                            mimeType: "application/json",
-                            text: JSON.stringify(streams, null, 2),
-                        },
-                    ],
-                };
-            }
-            catch (error) {
-                throw new types_1.McpError(types_1.ErrorCode.InternalError, `Failed to fetch project streams: ${error}`);
-            }
+    // Tools
+    server.tool("list_projects", "Lists all the projects and their streams", {}, // No args
+    async () => {
+        try {
+            const projects = await fetchApi("/projects");
+            const fullData = await Promise.all(projects.map(async (p) => {
+                try {
+                    const streams = await fetchApi(`/streams?projectId=${p.id}`);
+                    return { ...p, streams };
+                }
+                catch {
+                    return p;
+                }
+            }));
+            return { content: [{ type: "text", text: JSON.stringify(fullData, null, 2) }] };
         }
-        throw new types_1.McpError(types_1.ErrorCode.InvalidRequest, "Unknown resource");
+        catch (error) {
+            return { content: [{ type: "text", text: `Error: ${error}` }], isError: true };
+        }
     });
-    // List Tools
-    server.setRequestHandler(types_1.ListToolsRequestSchema, () => {
-        return Promise.resolve({
-            tools: [
-                {
-                    name: "list_projects",
-                    description: "Lists all the projects and their streams",
-                    inputSchema: { type: "object", properties: {} },
-                },
-                {
-                    name: "query_logs",
-                    description: "Search or retrieve logs from a specific stream",
-                    inputSchema: {
-                        type: "object",
-                        properties: {
-                            streamId: { type: "string" },
-                            query: { type: "string" },
-                            limit: { type: "number" },
-                        },
-                        required: ["streamId"],
-                    },
-                }
-            ],
-        });
-    });
-    // Call Tool
-    server.setRequestHandler(types_1.CallToolRequestSchema, async (request) => {
-        const name = request.params.name;
-        const args = request.params.arguments || {};
-        switch (name) {
-            case "list_projects": {
-                try {
-                    const projects = await fetchApi("/projects");
-                    // Fetch streams for each project to be helpful
-                    const fullData = await Promise.all(projects.map(async (p) => {
-                        try {
-                            const streams = await fetchApi(`/streams?projectId=${p.id}`);
-                            return { ...p, streams };
-                        }
-                        catch {
-                            return p;
-                        }
-                    }));
-                    return { content: [{ type: "text", text: JSON.stringify(fullData, null, 2) }] };
-                }
-                catch (error) {
-                    throw new types_1.McpError(types_1.ErrorCode.InternalError, `Failed to list projects: ${error}`);
-                }
-            }
-            case "query_logs": {
-                const streamId = args.streamId;
-                if (!streamId)
-                    throw new types_1.McpError(types_1.ErrorCode.InvalidParams, "Stream ID is required");
-                const query = args.query;
-                const limit = args.limit || 20;
-                try {
-                    let url = `/logs?streamId=${streamId}&limit=${limit}`;
-                    if (query)
-                        url += `&q=${encodeURIComponent(query)}`;
-                    const logs = await fetchApi(url);
-                    return { content: [{ type: "text", text: JSON.stringify(logs, null, 2) }] };
-                }
-                catch (error) {
-                    throw new types_1.McpError(types_1.ErrorCode.InternalError, `Failed to query logs: ${error}`);
-                }
-            }
-            default:
-                throw new types_1.McpError(types_1.ErrorCode.MethodNotFound, "Unknown tool");
+    server.tool("query_logs", "Search or retrieve logs from a specific stream", {
+        streamId: zod_1.z.string().describe("The Stream ID"),
+        query: zod_1.z.string().optional().describe("Search query"),
+        limit: zod_1.z.number().optional().default(20).describe("Max logs to return")
+    }, async ({ streamId, query, limit }) => {
+        try {
+            let url = `/logs?streamId=${streamId}&limit=${limit}`;
+            if (query)
+                url += `&q=${encodeURIComponent(query)}`;
+            const logs = await fetchApi(url);
+            return { content: [{ type: "text", text: JSON.stringify(logs, null, 2) }] };
+        }
+        catch (error) {
+            return { content: [{ type: "text", text: `Error: ${error}` }], isError: true };
         }
     });
     const transport = new stdio_js_1.StdioServerTransport();
     await server.connect(transport);
+    console.error("Loghead MCP Server running on stdio");
 }
 main().catch(console.error);

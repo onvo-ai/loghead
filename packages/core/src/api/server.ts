@@ -15,7 +15,8 @@ export async function startApiServer(db: DbService) {
 
     await auth.initialize();
 
-    console.log(chalk.bold.green(`✔ Loghead Core API Server running on http://localhost:${port}`));
+    console.log(chalk.bold.green(`💻 Server running on:\n`));
+    console.log(chalk.green(`http://localhost:${port}`));
 
     app.post("/api/ingest", async (req, res) => {
         try {

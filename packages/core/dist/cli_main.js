@@ -25,8 +25,9 @@ async function main() {
         console.log("Ensuring database is initialized...");
         await (0, migrate_1.migrate)(false); // Run migrations silently
         const token = await auth.getOrCreateMcpToken();
-        console.log(chalk_1.default.bold.yellow(`\n🔑 MCP Server Token: ${token}`));
-        console.log(chalk_1.default.dim("Use this token for the MCP Server or other admin integrations.\n"));
+        console.log(chalk_1.default.bold.yellow(`\n🔑 MCP Server Token:`));
+        console.log(chalk_1.default.dim("\nUse this token for the MCP Server or other admin integrations.\n"));
+        console.log(chalk_1.default.yellow(`${token}`));
         await (0, server_1.startApiServer)(db);
     })
         .command("ui", "Start Terminal UI", {}, async () => {

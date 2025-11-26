@@ -15,7 +15,8 @@ async function startApiServer(db) {
     app.use((0, cors_1.default)());
     app.use(express_1.default.json());
     await auth.initialize();
-    console.log(chalk_1.default.bold.green(`✔ Loghead Core API Server running on http://localhost:${port}`));
+    console.log(chalk_1.default.bold.green(`💻 Server running on:\n`));
+    console.log(chalk_1.default.green(`http://localhost:${port}`));
     app.post("/api/ingest", async (req, res) => {
         try {
             const authHeader = req.headers.authorization;
