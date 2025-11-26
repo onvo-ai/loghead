@@ -77,11 +77,14 @@ async function main() {
         {
             streamId: z.string().describe("The Stream ID"),
             query: z.string().optional().describe("Search query"),
-            limit: z.number().optional().default(20).describe("Max logs to return")
+            limit: z.number().optional().describe("Max logs to return (deprecated, use pageSize)"),
+            page: z.number().optional().default(1).describe("Page number"),
+            pageSize: z.number().optional().default(100).describe("Logs per page")
         },
-        async ({ streamId, query, limit }) => {
+        async ({ streamId, query, limit, page, pageSize }) => {
             try {
-                let url = `/logs?streamId=${streamId}&limit=${limit}`;
+                let url = `/logs?streamId=${streamId}&page=${page}&pageSize=${pageSize}`;
+                if (limit) url += `&limit=${limit}`;
                 if (query) url += `&q=${encodeURIComponent(query)}`;
 
                 const logs = await fetchApi(url);

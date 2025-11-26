@@ -63,10 +63,14 @@ async function main() {
     server.tool("query_logs", "Search or retrieve logs from a specific stream", {
         streamId: zod_1.z.string().describe("The Stream ID"),
         query: zod_1.z.string().optional().describe("Search query"),
-        limit: zod_1.z.number().optional().default(20).describe("Max logs to return")
-    }, async ({ streamId, query, limit }) => {
+        limit: zod_1.z.number().optional().describe("Max logs to return (deprecated, use pageSize)"),
+        page: zod_1.z.number().optional().default(1).describe("Page number"),
+        pageSize: zod_1.z.number().optional().default(100).describe("Logs per page")
+    }, async ({ streamId, query, limit, page, pageSize }) => {
         try {
-            let url = `/logs?streamId=${streamId}&limit=${limit}`;
+            let url = `/logs?streamId=${streamId}&page=${page}&pageSize=${pageSize}`;
+            if (limit)
+                url += `&limit=${limit}`;
             if (query)
                 url += `&q=${encodeURIComponent(query)}`;
             const logs = await fetchApi(url);

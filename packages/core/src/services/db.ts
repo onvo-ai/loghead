@@ -143,13 +143,13 @@ export class DbService {
         });
     }
 
-    getRecentLogs(streamId: string, limit = 50): Log[] {
+    getRecentLogs(streamId: string, limit = 50, offset = 0): Log[] {
         const rows = (db.prepare(`
       SELECT content, timestamp, metadata FROM logs
       WHERE stream_id = ?
       ORDER BY timestamp DESC
-      LIMIT ?
-    `) as unknown as DbAny).all(streamId, limit);
+      LIMIT ? OFFSET ?
+    `) as unknown as DbAny).all(streamId, limit, offset);
 
         return rows.map((row: Log) => {
             let meta = row.metadata;

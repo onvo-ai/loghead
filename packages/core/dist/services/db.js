@@ -128,13 +128,13 @@ class DbService {
             };
         });
     }
-    getRecentLogs(streamId, limit = 50) {
+    getRecentLogs(streamId, limit = 50, offset = 0) {
         const rows = client_1.db.prepare(`
       SELECT content, timestamp, metadata FROM logs
       WHERE stream_id = ?
       ORDER BY timestamp DESC
-      LIMIT ?
-    `).all(streamId, limit);
+      LIMIT ? OFFSET ?
+    `).all(streamId, limit, offset);
         return rows.map((row) => {
             let meta = row.metadata;
             if (typeof meta === "string") {

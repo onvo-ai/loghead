@@ -113,14 +113,22 @@ async function startApiServer(db) {
         if (!streamId) {
             return res.status(400).send("Missing streamId");
         }
-        const limit = parseInt(req.query.limit || "50");
+        let page = parseInt(req.query.page || "1");
+        if (page < 1)
+            page = 1;
+        let pageSize = parseInt(req.query.pageSize || "100");
+        let limit = req.query.limit ? parseInt(req.query.limit) : pageSize;
+        // Enforce max limit
+        if (limit > 1000)
+            limit = 1000;
+        const offset = (page - 1) * limit;
         const query = req.query.q;
         let logs;
         if (query) {
             logs = await db.searchLogs(streamId, query, limit);
         }
         else {
-            logs = db.getRecentLogs(streamId, limit);
+            logs = db.getRecentLogs(streamId, limit, offset);
         }
         res.json(logs);
     });
