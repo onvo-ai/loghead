@@ -1,0 +1,37 @@
+{
+  "name": "@loghead/core",
+  "version": "0.1.5",
+  "description": "Core API and Database for Loghead",
+  "main": "dist/index.js",
+  "bin": {
+    "loghead": "./dist/cli_main.js"
+  },
+  "scripts": {
+    "start": "tsx src/cli_main.ts start",
+    "ui": "tsx src/cli_main.ts ui",
+    "build": "tsc",
+    "dev": "tsx watch src/cli_main.ts",
+    "deploy": "npm publish --access public"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.0",
+    "sqlite-vec": "^0.1.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "yargs": "^17.7.2",
+    "jsonwebtoken": "^9.0.2",
+    "chalk": "^5.3.0",
+    "inquirer": "^9.2.14",
+    "cli-table3": "^0.6.3",
+    "ollama": "^0.5.9"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.9",
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/yargs": "^17.0.32",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/inquirer": "^9.0.7"
+  }
+}

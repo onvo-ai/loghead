@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -7,9 +8,12 @@ import {
     ReadResourceRequestSchema,
     ErrorCode,
     McpError,
-} from "@modelcontextprotocol/sdk/types.js";
+} from "@modelcontextprotocol/sdk/types";
+import dotenv from "dotenv";
 
-const API_URL = Deno.env.get("LOGHEAD_API_URL") || "http://localhost:4567/api";
+dotenv.config();
+
+const API_URL = process.env.LOGHEAD_API_URL || "http://localhost:4567/api";
 
 async function fetchApi(path: string, options: RequestInit = {}) {
     const url = `${API_URL}${path}`;
@@ -149,6 +153,4 @@ async function main() {
     await server.connect(transport);
 }
 
-if (import.meta.main) {
-    await main();
-}
+main().catch(console.error);

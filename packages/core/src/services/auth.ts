@@ -1,12 +1,13 @@
-import { create, verify } from "djwt";
-import { db } from "../db/client.ts";
+import jwt from "jsonwebtoken";
+import { db } from "../db/client";
+import { randomBytes } from "crypto";
 
 // Helper type for DB access
 // deno-lint-ignore no-explicit-any
 type DbAny = any;
 
 export class AuthService {
-    private secretKey: CryptoKey | null = null;
+    private secretKey: string | null = null;
 
     async initialize() {
         if (this.secretKey) return;
@@ -18,39 +19,38 @@ export class AuthService {
 
         if (!rawSecret) {
             // Generate new secret
-            const key = await crypto.subtle.generateKey(
-                { name: "HMAC", hash: "SHA-512" },
-                true,
-                ["sign", "verify"],
-            );
-            const exported = await crypto.subtle.exportKey("jwk", key);
-            rawSecret = JSON.stringify(exported);
-
+            rawSecret = randomBytes(64).toString('hex');
             (db.prepare("INSERT INTO system_config (key, value) VALUES ('jwt_secret', ?)") as unknown as DbAny).run(rawSecret);
         }
 
-        const jwk = JSON.parse(rawSecret);
-        this.secretKey = await crypto.subtle.importKey(
-            "jwk",
-            jwk,
-            { name: "HMAC", hash: "SHA-512" },
-            true,
-            ["sign", "verify"]
-        );
+        this.secretKey = rawSecret;
+    }
+
+    async getOrCreateMcpToken(): Promise<string> {
+        await this.initialize();
+        if (!this.secretKey) throw new Error("Auth not initialized");
+
+        // Check if token exists in DB
+        const row = (db.prepare("SELECT value FROM system_config WHERE key = 'mcp_token'") as unknown as DbAny).get();
+        if (row?.value) {
+            return row.value;
+        }
+
+        // Create new token
+        // A system token that has access to everything (conceptually)
+        const token = jwt.sign({ sub: "system:mcp", iss: "loghead", role: "admin" }, this.secretKey, { algorithm: "HS512" });
+
+        (db.prepare("INSERT INTO system_config (key, value) VALUES ('mcp_token', ?)") as unknown as DbAny).run(token);
+
+        return token;
     }
 
     async createStreamToken(streamId: string): Promise<string> {
         await this.initialize();
         if (!this.secretKey) throw new Error("Auth not initialized");
 
-        const jwt = await create({ alg: "HS512", type: "JWT" }, {
-            sub: streamId,
-            iss: "loghead",
-            // No expiration for stream tokens for now, or make it very long lived
-            // exp: getNumericDate(60 * 60 * 24 * 365), // 1 year
-        }, this.secretKey);
-
-        return jwt;
+        const token = jwt.sign({ sub: streamId, iss: "loghead" }, this.secretKey, { algorithm: "HS512" });
+        return token;
     }
 
     async verifyToken(token: string): Promise<{ streamId: string } | null> {
@@ -58,8 +58,8 @@ export class AuthService {
         if (!this.secretKey) throw new Error("Auth not initialized");
 
         try {
-            const payload = await verify(token, this.secretKey);
-            if (payload.iss !== "loghead" || !payload.sub) return null;
+            const payload = jwt.verify(token, this.secretKey, { issuer: "loghead", algorithms: ["HS512"] }) as jwt.JwtPayload;
+            if (!payload.sub) return null;
             return { streamId: payload.sub };
         } catch (e) {
             console.error("Token verification failed:", e);

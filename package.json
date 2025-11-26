@@ -1,23 +1,19 @@
 {
-  "name": "loghead",
+  "name": "loghead-monorepo",
   "version": "0.1.0",
-  "description": "Smart log aggregation tool and MCP server",
+  "private": true,
   "scripts": {
-    "build": "dnt",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node scripts/build.js",
+    "test": "echo 'Run test manually'",
+    "deploy": "node scripts/deploy.js",
+    "dev": "echo 'Run dev manually'"
   },
-  "files": [
-    "bin",
-    "src"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/onvo-ai/loghead.git"
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0"
   },
-  "author": "Onvo AI",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/onvo-ai/loghead/issues"
-  },
-  "homepage": "https://github.com/onvo-ai/loghead#readme"
+  "dependencies": {
+    "esbuild": "^0.27.0"
+  }
 }

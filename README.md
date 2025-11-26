@@ -1,6 +1,6 @@
 # Loghead
 
-Loghead is a smart log aggregation tool and MCP server. It collects logs from various sources like your Terminal, Docker containers, or Browser, stores them in a database, and makes them searchable for AI assistants (like Claude, Cursor, or Windsurf).
+Loghead is a smart log aggregation tool and MCP server. It collects logs from various sources like your terminal, docker containers, or your browser, stores them in a database, and makes them searchable for AI assistants (like Claude, Cursor, or Windsurf).
 
 Think of it as a "long-term memory" for your development logs that your AI coding agent can read.
 
@@ -8,187 +8,220 @@ Think of it as a "long-term memory" for your development logs that your AI codin
 
 Before you start, make sure you have:
 
-1.  **Local Ollama**: [Download here](https://ollama.com/download).
+1.  **Node.js** (v18 or higher).
+2.  **Ollama**: [Download here](https://ollama.com/download).
     - Ensure it is running (`ollama serve`) and accessible at `http://localhost:11434`.
     - Pull the embedding model: `ollama pull qwen3-embedding:0.6b` (or similar).
-2.  **The Loghead Executable**: You can download the latest release or build it yourself (see below).
-
-_(Note: [Deno](https://docs.deno.com/runtime/fundamentals/installation/) is only required if you want to build the project from source.)_
 
 ## Setup Guide
 
-Follow these steps to get Loghead running on your machine.
+### 1. Start the Server
 
-### 1. Install the Tool
-
-Download the `loghead` binary from the releases page and move it to a directory in your PATH (e.g., `/usr/local/bin`).
-
-**Verify installation:**
+The core server handles the database and API.
 
 ```bash
-loghead --help
+npx @loghead/core start
 ```
 
-### 2. Initialize the Database
+This command will:
 
-Run this command to set up the database tables (SQLite):
+- Initialize the local SQLite database (`loggerhead.db`).
+- Start the API server on port `4567`.
+- Print an MCP Server Token.
 
-```bash
-loghead init
-```
+### 2. Connect Your AI Tool (MCP)
 
-## How to Use
+You need to configure your AI assistant to talk to Loghead using the Model Context Protocol (MCP). Use the token printed in the previous step.
 
-### 1. Start the MCP Server
+#### Claude Desktop
 
-This is the bridge that allows your AI editor to talk to Loghead.
-
-```bash
-loghead start
-```
-
-You will see instructions on how to connect your specific AI tool (Claude, Cursor, VS Code, Windsurf) in the output.
-
-**Example for Claude Desktop Config:**
+Edit your `claude_desktop_config.json` (usually in `~/Library/Application Support/Claude/` on macOS):
 
 ```json
-"loghead": {
-  "command": "loghead",
-  "args": ["stdio"]
+{
+  "mcpServers": {
+    "loghead": {
+      "command": "npx",
+      "args": ["-y", "@loghead/mcp"],
+      "env": {
+        "LOGHEAD_API_URL": "http://localhost:4567/api",
+        "LOGHEAD_TOKEN": "<YOUR_MCP_TOKEN>"
+      }
+    }
+  }
 }
 ```
 
-### 2. Create a Project
+#### Windsurf / Cascade
 
-Organize your logs into projects.
+Add the MCP server in your Windsurf configuration:
 
-```bash
-loghead projects add "My Awesome App"
+```json
+{
+  "mcpServers": {
+    "loghead": {
+      "command": "npx",
+      "args": ["-y", "@loghead/mcp"],
+      "env": {
+        "LOGHEAD_API_URL": "http://localhost:4567/api",
+        "LOGHEAD_TOKEN": "<YOUR_MCP_TOKEN>"
+      }
+    }
+  }
+}
 ```
 
-### 3. Add a Log Stream
+#### Cursor
 
-A "stream" is a specific source of logs (e.g., your terminal output, or a specific Docker container). You need the Project ID from the previous step (use `loghead projects list` to see it).
+Go to **Settings > MCP** and add a new server:
 
-**Example: Creating a stream for Docker logs**
+- **Name**: `loghead`
+- **Type**: `stdio`
+- **Command**: `npx -y @loghead/mcp`
+- **Environment Variables**:
+  - `LOGHEAD_API_URL`: `http://localhost:4567/api`
+  - `LOGHEAD_TOKEN`: `<YOUR_MCP_TOKEN>`
 
-```bash
-loghead streams add docker --project <PROJECT_ID> --name "Backend API" --container my-api-container
-```
+### 3. Create a Project
 
-**Example: Creating a generic terminal stream**
-
-```bash
-loghead streams add terminal --project <PROJECT_ID> --name "Build Logs"
-```
-
-### 4. Ingest Logs
-
-Now, feed logs into the stream you created. You need the Stream ID (use `loghead streams list --project <PROJECT_ID>` to find it).
-
-**From Standard Input (Manual):**
-You can pipe any command's output into Loghead:
+You can manage projects via the CLI (in a separate terminal):
 
 ```bash
-echo "Something happened" | loghead ingest --stream <STREAM_ID>
+npx @loghead/core projects add "My Awesome App"
+# Copy the Project ID returned
 ```
 
-Or run a script and capture its output:
+### 4. Add a Log Stream
+
+Create a stream to pipe logs into.
+
+**For Terminal Output:**
 
 ```bash
-deno run my_script.ts | loghead ingest --stream <STREAM_ID>
+npx @loghead/core streams add terminal --project <PROJECT_ID> --name "Build Logs"
+# Copy the Stream Token returned
 ```
 
-### 5. Query Logs (The AI Part)
-
-Your AI assistant can now "call" tools to search these logs. It can ask things like:
-
-- "Show me the recent errors in the Backend API stream."
-- "Find logs related to 'database connection failure'."
-
-You can also check logs manually:
+**For Docker Containers:**
 
 ```bash
-npx loghead log list --stream <STREAM_ID>
+npx @loghead/core streams add docker --project <PROJECT_ID> --name "Backend API" --container my-api-container
+# Copy the Stream Token returned
 ```
 
-## Building from Source
+### 5. Ingest Logs
 
-If you want to build the `loghead` executable yourself (e.g., to contribute or modify it):
+Now, feed logs into the stream using the ingestor tools.
 
-1.  Install **Deno** (see Prerequisites).
-2.  Compile the tool into a single executable file in the `build` directory:
+**Terminal Pipe:**
 
 ```bash
-mkdir -p build
-deno task build
+# Pipe any command into loghead-terminal
+npm run build | npx @loghead/terminal --token <STREAM_TOKEN>
 ```
 
-3.  This will generate the `loghead` binary in your `packages/core/build/` directory.
+**Docker Logs:**
 
-## Architecture Overview
+```bash
+# Attach to a running container
+npx @loghead/docker --token <STREAM_TOKEN> --container my-api-container
+```
 
-- **Language:** TypeScript (Deno)
-- **Database:** SQLite with `sqlite-vec` for storing log embeddings.
-- **AI:** Local Ollama running `mxbai-embed-large` (or similar) to understand the semantic meaning of logs.
-- **Protocol:** Model Context Protocol (MCP) for integration with AI agents.
+## How to Use with AI
+
+Once connected, you can ask your AI assistant questions about your logs:
+
+- "What errors appeared in the build logs recently?"
+- "Find any database connection timeouts in the backend logs."
+- "Why did the application crash?"
 
 ## Sample Apps
 
-We provide sample applications in the `sample_apps` directory to help you test Loghead's capabilities.
+We provide a unified **Calculator App** in `sample_apps/calculator_app` that combines a Backend API, Frontend UI, and CLI capabilities to help you test all of Loghead's features in one place.
 
-### 1. CLI Calculator
+### The Calculator App
 
-A simple script that generates random logs and simulates a crash.
+This app runs an Express.js server that performs calculations and logs them. It includes a web interface and can be containerized with Docker.
 
-**How to test:**
+#### Scenario 1: Testing Terminal Ingest (CLI)
 
-1. Create a project and a stream:
+1.  **Create a Stream:**
+
+    ```bash
+    npx @loghead/core projects add "Calculator Project"
+    # Copy Project ID
+    npx @loghead/core streams add terminal --project <PROJECT_ID> --name "Terminal Logs"
+    # Copy Stream Token
+    ```
+
+2.  **Run & Pipe Logs:**
+    Run the server locally and pipe its output to Loghead.
+
+    ```bash
+    cd sample_apps/calculator_app
+    npm install
+    npm start | npx @loghead/terminal --token <STREAM_TOKEN>
+    ```
+
+3.  **Generate Traffic:**
+    Open `http://localhost:3000` and perform calculations. The logs in your terminal will be sent to Loghead.
+
+4.  **Ask AI:** "What calculations were performed recently?"
+
+#### Scenario 2: Testing Docker Ingest
+
+1.  **Create a Stream:**
+
+    ```bash
+    npx @loghead/core streams add docker --project <PROJECT_ID> --name "Docker Container" --container loghead-calc
+    # Copy Stream Token
+    ```
+
+2.  **Run in Docker:**
+    Build and run the app as a container named `loghead-calc`.
+
+    ```bash
+    cd sample_apps/calculator_app
+    docker build -t loghead-calc .
+    docker run --name loghead-calc -p 3000:3000 -d loghead-calc
+    ```
+
+3.  **Attach Loghead:**
+
+    ```bash
+    npx @loghead/docker --token <STREAM_TOKEN> --container loghead-calc
+    ```
+
+4.  **Generate Traffic & Ask AI:**
+    Perform actions in the browser. Ask: "Did any errors occur in the docker container?" (Try dividing by zero or simulating a crash).
+
+#### Scenario 3: Testing Browser Ingest (Chrome Extension)
+
+1.  **Create a Stream:**
+
+    ```bash
+    npx @loghead/core streams add browser --project <PROJECT_ID> --name "Frontend Logs"
+    # Copy Stream Token
+    ```
+
+2.  **Configure Extension:**
+    Install the Loghead Chrome Extension (if available) and set the Stream Token.
+
+3.  **Use the App:**
+    Open `http://localhost:3000` (or the Docker version). The app logs actions to `console.log`, which the extension will capture.
+
+4.  **Ask AI:** "What interactions did the user have in the browser?"
+
+## Development
+
+To build from source:
+
+1. Clone the repo.
+2. Install dependencies:
    ```bash
-   npx loghead projects add "Calculator App"
-   # Copy Project ID
-   npx loghead streams add terminal --project <PROJECT_ID> --name "CLI Output"
-   # Copy Stream ID
+   npm install
    ```
-2. Run the calculator and pipe logs to Loghead:
+3. Build all packages:
    ```bash
-   deno run sample_apps/cli_calculator/main.ts | npx @loghead/terminal --token <TOKEN>
+   npm run build
    ```
-3. Ask your AI Agent: "Why did the calculator app crash?"
-
-### 2. Docker App
-
-A Python worker process running in Docker that logs tasks and simulates occasional warnings.
-
-**How to test:**
-
-1. Create a stream for Docker:
-   ```bash
-   # Use existing Project ID
-   npx loghead streams add docker --project <PROJECT_ID> --name "Worker Node" --container worker-app
-   # Note the container name "worker-app" matches the --name in docker run below
-   # Copy Stream ID
-   ```
-2. Build and run the container:
-   ```bash
-   cd sample_apps/docker_app
-   docker build -t docker-app .
-   docker run --name worker-app -d docker-app
-   ```
-3. Attach Loghead to the container logs:
-   ```bash
-   npx @loghead/docker --token <TOKEN> --container worker-app
-   ```
-4. Ask your AI Agent: "What tasks is the worker processing?" or "Are there any performance warnings?"
-
-### 3. Browser App
-
-A simple HTML/JS Calculator that logs actions to the browser console.
-
-**How to test:**
-
-1. Open `sample_apps/browser_app/index.html` in your browser.
-2. Ensure the Loghead Chrome Extension is installed and connected to a browser stream.
-3. Open Developer Tools (Console).
-4. Perform some calculations (try dividing by zero!).
-5. Logs will automatically appear in your Loghead dashboard.

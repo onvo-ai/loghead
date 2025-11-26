@@ -1,0 +1,26 @@
+{
+  "name": "@loghead/terminal",
+  "version": "0.1.3",
+  "description": "Terminal log ingestor for Loghead",
+  "main": "dist/main.js",
+  "bin": {
+    "loghead-terminal": "./dist/main.js"
+  },
+  "scripts": {
+    "start": "node dist/main.js",
+    "build": "tsc",
+    "dev": "tsx src/main.ts",
+    "deploy": "npm publish --access public"
+  },
+  "dependencies": {
+    "yargs": "^17.7.2",
+    "dotenv": "^16.4.1",
+    "axios": "^1.6.7" 
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.0",
+    "@types/yargs": "^17.0.32",
+    "tsx": "^4.7.0"
+  }
+}

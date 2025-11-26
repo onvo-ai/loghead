@@ -1,44 +1,43 @@
-import { parseArgs } from "@std/cli/parse-args";
-import { TextLineStream } from "@std/streams";
+#!/usr/bin/env node
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
+import { spawn } from "child_process";
+import readline from "readline";
+import { Readable } from "stream";
 
 async function main() {
-    const args = parseArgs(Deno.args, {
-        string: ["token", "container", "api"],
-        default: {
-            api: "http://localhost:4567"
-        }
-    });
+    const argv = await yargs(hideBin(process.argv))
+        .option("token", { type: "string", description: "Stream token" })
+        .option("container", { type: "string", description: "Container ID/Name" })
+        .option("api", { type: "string", default: "http://localhost:4567", description: "API URL" })
+        .help()
+        .parse();
 
-    const token = args.token || Deno.env.get("LOGHEAD_TOKEN");
+    const token = argv.token || process.env.LOGHEAD_TOKEN;
     if (!token) {
         console.error("Error: Missing token. Provide --token or set LOGHEAD_TOKEN env var.");
-        Deno.exit(1);
+        process.exit(1);
     }
 
-    const container = args.container;
+    const container = argv.container;
     if (!container) {
         console.error("Error: Missing --container argument.");
-        Deno.exit(1);
+        process.exit(1);
     }
 
-    const apiUrl = args.api.replace(/\/$/, "");
+    const apiUrl = (argv.api as string).replace(/\/$/, "");
     console.error(`[Loghead Docker] Attaching to ${container} and forwarding to ${apiUrl}...`);
 
-    const cmd = new Deno.Command("docker", {
-        args: ["logs", "-f", container],
-        stdout: "piped",
-        stderr: "piped"
-    });
+    const child = spawn("docker", ["logs", "-f", container]);
 
-    const child = cmd.spawn();
-
-    const processStream = async (stream: ReadableStream<Uint8Array>, source: string) => {
-        const reader = stream
-            .pipeThrough(new TextDecoderStream())
-            .pipeThrough(new TextLineStream());
+    const processStream = async (stream: Readable, source: string) => {
+        const rl = readline.createInterface({
+            input: stream,
+            terminal: false
+        });
 
         let batch: any[] = [];
-        let timer: number | null = null;
+        let timer: NodeJS.Timeout | null = null;
 
         const flush = async () => {
             if (batch.length === 0) return;
@@ -49,7 +48,8 @@ async function main() {
 
             try {
                 const parts = token.split(".");
-                const payload = JSON.parse(atob(parts[1]));
+                if (parts.length !== 3) throw new Error("Invalid JWT token format");
+                const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
                 const streamId = payload.sub;
 
                 const res = await fetch(`${apiUrl}/api/ingest`, {
@@ -71,9 +71,8 @@ async function main() {
             }
         };
 
-        for await (const line of reader) {
-            if (!line.trim()) continue;
-            // console.log(`${source}: ${line}`); // Optional: Print to stdout?
+        rl.on('line', (line) => {
+            if (!line.trim()) return;
 
             batch.push({
                 content: line,
@@ -81,21 +80,22 @@ async function main() {
             });
 
             if (batch.length >= 10) {
-                await flush();
+                flush();
             } else if (!timer) {
                 timer = setTimeout(flush, 1000);
             }
-        }
-        await flush();
+        });
+
+        // Handle close if needed, though child.on('close') covers main exit
     };
 
-    await Promise.all([
-        processStream(child.stdout, "STDOUT"),
-        processStream(child.stderr, "STDERR"),
-        child.status
-    ]);
+    processStream(child.stdout, "STDOUT");
+    processStream(child.stderr, "STDERR");
+
+    child.on('close', (code) => {
+        console.log(`Docker process exited with code ${code}`);
+        process.exit(code || 0);
+    });
 }
 
-if (import.meta.main) {
-    main();
-}
+main();

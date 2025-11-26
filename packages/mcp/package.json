@@ -1,0 +1,24 @@
+{
+  "name": "@loghead/mcp",
+  "version": "0.1.3",
+  "description": "Standalone MCP Server for Loghead",
+  "main": "dist/main.js",
+  "bin": {
+    "loghead-mcp": "./dist/main.js"
+  },
+  "scripts": {
+    "start": "node dist/main.js",
+    "build": "tsc",
+    "dev": "tsx src/main.ts",
+    "deploy": "npm publish --access public"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "dotenv": "^16.4.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0"
+  }
+}

@@ -1,158 +1,123 @@
-import { DbService } from "../services/db.ts";
-import { AuthService } from "../services/auth.ts";
-import { colors } from "@cliffy/ansi/colors";
+import express from "express";
+import cors from "cors";
+import { DbService } from "../services/db";
+import { AuthService } from "../services/auth";
+import chalk from "chalk";
 
 const auth = new AuthService();
 
 export async function startApiServer(db: DbService) {
-    // Find a free port starting from 4567
-    let port = 4567;
-    while (true) {
-        try {
-            const listener = Deno.listen({ port });
-            listener.close();
-            break;
-        } catch (e) {
-            if (e instanceof Deno.errors.AddrInUse) {
-                port++;
-            } else {
-                throw e;
-            }
-        }
-    }
+    const app = express();
+    const port = process.env.PORT || 4567;
 
-    const baseUrl = `http://localhost:${port}`;
-
-    console.log(colors.bold.green(`✔ Loghead Core API Server running on ${baseUrl}`));
+    app.use(cors());
+    app.use(express.json());
 
     await auth.initialize();
 
-    const httpServer = Deno.serve({
-        port,
-        onListen: () => { } // Silence default listening log
-    }, async (req) => {
-        // CORS & Private Network Access (PNA) Handling
-        const origin = req.headers.get("Origin") || "*";
-        const corsHeaders = {
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Allow-Private-Network": "true",
-            "Vary": "Origin",
-        };
+    console.log(chalk.bold.green(`✔ Loghead Core API Server running on http://localhost:${port}`));
 
-        if (req.method === "OPTIONS") {
-            return new Response(null, { status: 204, headers: corsHeaders });
-        }
-
-        const url = new URL(req.url);
-
-        if (url.pathname === "/api/ingest") {
-            return await handleIngest(req, db, corsHeaders);
-        }
-
-        if (url.pathname === "/api/projects" && (req.method === "POST" || req.method === "GET")) {
-            const projects = db.listProjects();
-            return new Response(JSON.stringify(projects), { headers: { "Content-Type": "application/json", ...corsHeaders } });
-        }
-
-        if (url.pathname === "/api/streams") {
-            let projectId: string | null = null;
-
-            if (req.method === "GET") {
-                projectId = url.searchParams.get("projectId");
-            } else if (req.method === "POST") {
-                const body = await req.json();
-                projectId = body.projectId;
+    app.post("/api/ingest", async (req, res) => {
+        try {
+            const authHeader = req.headers.authorization;
+            if (!authHeader || !authHeader.startsWith("Bearer ")) {
+                return res.status(401).send("Unauthorized: Missing token");
+            }
+            const token = authHeader.split(" ")[1];
+            const payload = await auth.verifyToken(token);
+            if (!payload || !payload.streamId) {
+                return res.status(401).send("Unauthorized: Invalid token");
             }
 
-            if (projectId) {
-                const streams = db.listStreams(projectId);
-                return new Response(JSON.stringify(streams), { headers: { "Content-Type": "application/json", ...corsHeaders } });
+            const { streamId, logs } = req.body;
+
+            if (streamId !== payload.streamId) {
+                return res.status(403).send("Forbidden: Token does not match streamId");
             }
-        }
 
-        if (url.pathname === "/api/streams/create" && req.method === "POST") {
-            const body = await req.json();
-            const stream = await db.createStream(body.projectId, body.type, body.name, {});
-            return new Response(JSON.stringify(stream), { headers: { "Content-Type": "application/json", ...corsHeaders } });
-        }
-
-        if (url.pathname === "/api/logs" && req.method === "GET") {
-            const streamId = url.searchParams.get("streamId");
-            if (!streamId) {
-                return new Response("Missing streamId", { status: 400, headers: corsHeaders });
+            if (!logs) {
+                return res.status(400).send("Missing logs");
             }
-            const limit = parseInt(url.searchParams.get("limit") || "50");
-            const query = url.searchParams.get("q");
 
-            let logs;
-            if (query) {
-                logs = await db.searchLogs(streamId, query, limit);
-            } else {
-                logs = db.getRecentLogs(streamId, limit);
+            const logEntries = Array.isArray(logs) ? logs : [logs];
+
+            for (const log of logEntries) {
+                let content = "";
+                let metadata = {};
+
+                if (typeof log === "string") {
+                    content = log;
+                } else if (typeof log === "object") {
+                    content = log.content || JSON.stringify(log);
+                    metadata = log.metadata || {};
+                }
+
+                if (content) {
+                    await db.addLog(streamId, content, metadata);
+                }
             }
-            return new Response(JSON.stringify(logs), { headers: { "Content-Type": "application/json", ...corsHeaders } });
-        }
 
-        return new Response("Not Found", { status: 404, headers: corsHeaders });
+            res.json({ success: true, count: logEntries.length });
+        } catch (e) {
+            console.error("Ingest error:", e);
+            res.status(500).json({ error: String(e) });
+        }
     });
 
-    await httpServer.finished;
-}
+    app.get("/api/projects", (req, res) => {
+        const projects = db.listProjects();
+        res.json(projects);
+    });
 
-async function handleIngest(req: Request, db: DbService, corsHeaders: HeadersInit): Promise<Response> {
-    try {
-        if (req.method !== "POST") {
-            return new Response("Method Not Allowed", { status: 405, headers: corsHeaders });
+    app.post("/api/projects", (req, res) => {
+        const projects = db.listProjects();
+        res.json(projects);
+    });
+
+    app.get("/api/streams", (req, res) => {
+        const projectId = req.query.projectId as string;
+        if (projectId) {
+            const streams = db.listStreams(projectId);
+            res.json(streams);
+        } else {
+            res.status(400).send("Missing projectId");
         }
+    });
 
-        // Auth Check
-        const authHeader = req.headers.get("Authorization");
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return new Response("Unauthorized: Missing token", { status: 401, headers: corsHeaders });
+    app.post("/api/streams", (req, res) => {
+        const projectId = req.body.projectId;
+        if (projectId) {
+            const streams = db.listStreams(projectId);
+            res.json(streams);
+        } else {
+            res.status(400).send("Missing projectId");
         }
-        const token = authHeader.split(" ")[1];
-        const payload = await auth.verifyToken(token);
-        if (!payload || !payload.streamId) {
-            return new Response("Unauthorized: Invalid token", { status: 401, headers: corsHeaders });
+    });
+
+    app.post("/api/streams/create", async (req, res) => {
+        const body = req.body;
+        const stream = await db.createStream(body.projectId, body.type, body.name, {});
+        res.json(stream);
+    });
+
+    app.get("/api/logs", async (req, res) => {
+        const streamId = req.query.streamId as string;
+        if (!streamId) {
+            return res.status(400).send("Missing streamId");
         }
+        const limit = parseInt((req.query.limit as string) || "50");
+        const query = req.query.q as string;
 
-        const body = await req.json();
-        const { streamId, logs } = body;
-
-        // Verify streamId matches token
-        if (streamId !== payload.streamId) {
-            return new Response("Forbidden: Token does not match streamId", { status: 403, headers: corsHeaders });
+        let logs;
+        if (query) {
+            logs = await db.searchLogs(streamId, query, limit);
+        } else {
+            logs = db.getRecentLogs(streamId, limit);
         }
+        res.json(logs);
+    });
 
-        if (!logs) {
-            return new Response("Missing logs", { status: 400, headers: corsHeaders });
-        }
-
-        const logEntries = Array.isArray(logs) ? logs : [logs];
-
-        for (const log of logEntries) {
-            let content = "";
-            let metadata = {};
-
-            if (typeof log === "string") {
-                content = log;
-            } else if (typeof log === "object") {
-                content = log.content || JSON.stringify(log);
-                metadata = log.metadata || {};
-            }
-
-            if (content) {
-                await db.addLog(streamId, content, metadata);
-            }
-        }
-
-        return new Response(JSON.stringify({ success: true, count: logEntries.length }), {
-            headers: { "Content-Type": "application/json", ...corsHeaders },
-        });
-    } catch (e) {
-        console.error("Ingest error:", e);
-        return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+    app.listen(port, () => {
+        // listening
+    });
 }

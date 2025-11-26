@@ -1,4 +1,4 @@
-import { db } from "./client.ts";
+import { db } from "./client";
 
 export function migrate(verbose = true) {
   if (verbose) console.log("Running migrations...");
@@ -64,8 +64,4 @@ export function migrate(verbose = true) {
   }
 
   if (verbose) console.log("Migrations complete.");
-}
-
-if (import.meta.main) {
-  migrate();
 }

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loghead Calculator</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding-top: 50px; background: #f0f0f0; }
+        .calculator { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input, select, button { padding: 10px; margin: 5px; font-size: 16px; }
+        #result { margin-top: 20px; font-weight: bold; font-size: 20px; }
+        .logs { margin-top: 20px; width: 80%; max-width: 600px; height: 200px; overflow-y: auto; background: #333; color: #0f0; padding: 10px; font-family: monospace; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Loghead Sample App</h1>
+    <p>Open Developer Tools to see Browser Logs</p>
+
+    <div class="calculator">
+        <input type="number" id="numA" placeholder="Number A">
+        <select id="op">
+            <option value="+">+</option>
+            <option value="-">-</option>
+            <option value="*">*</option>
+            <option value="/">/</option>
+            <option value="crash">Simulate Crash</option>
+        </select>
+        <input type="number" id="numB" placeholder="Number B">
+        <button onclick="calculate()">Calculate</button>
+        <div id="result"></div>
+    </div>
+
+    <div class="logs" id="logContainer">
+        <!-- In-app log viewer -->
+    </div>
+
+    <script>
+        function log(msg, type = 'info') {
+            const timestamp = new Date().toISOString();
+            const text = `[${type.toUpperCase()}] ${msg}`;
+            
+            // Log to Browser Console (Loghead Extension captures this)
+            if (type === 'error') console.error(text);
+            else if (type === 'warn') console.warn(text);
+            else console.log(text);
+
+            // Show in UI
+            const div = document.createElement('div');
+            div.innerText = `[${timestamp}] ${text}`;
+            div.style.color = type === 'error' ? '#ff6b6b' : (type === 'warn' ? '#feca57' : '#1dd1a1');
+            const container = document.getElementById('logContainer');
+            container.insertBefore(div, container.firstChild);
+        }
+
+        log("App loaded. Ready for testing.", "info");
+
+        async function calculate() {
+            const a = document.getElementById('numA').value;
+            const b = document.getElementById('numB').value;
+            const op = document.getElementById('op').value;
+
+            log(`User requested: ${a} ${op} ${b}`, "info");
+
+            try {
+                const res = await fetch('/api/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ a, b, op })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    log(`Server returned error: ${data.error}`, "error");
+                    document.getElementById('result').innerText = "Error: " + data.error;
+                } else {
+                    log(`Calculation successful: ${data.result}`, "info");
+                    document.getElementById('result').innerText = "Result: " + data.result;
+                }
+            } catch (e) {
+                log(`Network error: ${e.message}`, "error");
+            }
+        }
+    </script>
+</body>
+</html>

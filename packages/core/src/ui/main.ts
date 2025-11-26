@@ -1,10 +1,10 @@
-import { DbService } from "../services/db.ts";
-import { Select } from "@cliffy/prompt";
-import { colors } from "@cliffy/ansi/colors";
+import { DbService } from "../services/db";
+import inquirer from "inquirer";
+import chalk from "chalk";
 
 export async function startTui(db: DbService) {
     console.clear();
-    console.log(colors.bold.blue("Loghead Dashboard\n"));
+    console.log(chalk.bold.blue("Loghead Dashboard\n"));
 
     while (true) {
         const projects = db.listProjects();
@@ -14,13 +14,15 @@ export async function startTui(db: DbService) {
             break;
         }
 
-        const projectOptions = projects.map(p => ({ name: p.name, value: p.id }));
-        projectOptions.push({ name: colors.red("Exit"), value: "exit" });
+        const projectChoices = projects.map(p => ({ name: p.name, value: p.id }));
+        projectChoices.push({ name: chalk.red("Exit"), value: "exit" });
 
-        const projectId = await Select.prompt({
+        const { projectId } = await inquirer.prompt([{
+            type: "list",
+            name: "projectId",
             message: "Select a Project",
-            options: projectOptions
-        });
+            choices: projectChoices
+        }]);
 
         if (projectId === "exit") break;
 
@@ -28,7 +30,7 @@ export async function startTui(db: DbService) {
         while (true) {
             console.clear();
             const project = projects.find(p => p.id === projectId);
-            console.log(colors.bold.blue(`Project: ${project?.name}\n`));
+            console.log(chalk.bold.blue(`Project: ${project?.name}\n`));
 
             const streams = db.listStreams(projectId);
 
@@ -36,23 +38,25 @@ export async function startTui(db: DbService) {
                 console.log("No streams found.");
             }
 
-            const streamOptions = streams.map(s => ({
+            const streamChoices = streams.map(s => ({
                 name: `${s.name} (${s.type})`,
                 value: s.id
             }));
-            streamOptions.push({ name: colors.yellow("Back"), value: "back" });
+            streamChoices.push({ name: chalk.yellow("Back"), value: "back" });
 
-            const streamId = await Select.prompt({
+            const { streamId } = await inquirer.prompt([{
+                type: "list",
+                name: "streamId",
                 message: "Select a Stream to view logs",
-                options: streamOptions
-            });
+                choices: streamChoices
+            }]);
 
             if (streamId === "back") break;
 
             // Show logs (simple tail)
             console.clear();
             const stream = streams.find(s => s.id === streamId);
-            console.log(colors.bold.green(`Logs for ${stream?.name}:\n`));
+            console.log(chalk.bold.green(`Logs for ${stream?.name}:\n`));
 
             const logs = db.getRecentLogs(streamId, 20);
             if (logs.length === 0) {
@@ -60,12 +64,14 @@ export async function startTui(db: DbService) {
             } else {
                 // Reverse to show oldest to newest like a log file
                 [...logs].reverse().forEach(log => {
-                    console.log(`${colors.dim(log.timestamp)}  ${log.content}`);
+                    console.log(`${chalk.dim(log.timestamp)}  ${log.content}`);
                 });
             }
 
             console.log("\nPress Enter to return...");
-            await Deno.stdin.read(new Uint8Array(1));
+            await new Promise<void>(resolve => {
+                process.stdin.once('data', () => resolve());
+            });
         }
         console.clear();
     }

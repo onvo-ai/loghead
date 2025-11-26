@@ -1,7 +1,8 @@
-import { db } from "../db/client.ts";
-import { OllamaService } from "./ollama.ts";
-import { AuthService } from "./auth.ts";
-import { Project, Stream, Log, SearchResult } from "../types.ts";
+import { db } from "../db/client";
+import { OllamaService } from "./ollama";
+import { AuthService } from "./auth";
+import { Project, Stream, Log, SearchResult } from "../types";
+import { randomUUID } from "crypto";
 
 const ollama = new OllamaService();
 const auth = new AuthService();
@@ -12,7 +13,7 @@ type DbAny = any;
 
 export class DbService {
     createProject(name: string): Project {
-        const id = crypto.randomUUID();
+        const id = randomUUID();
         (db.prepare("INSERT INTO projects (id, name) VALUES (?, ?)") as unknown as DbAny).run(id, name);
         return this.getProject(id);
     }
@@ -42,7 +43,7 @@ export class DbService {
     }
 
     async createStream(projectId: string, type: string, name: string, config: Record<string, unknown> = {}): Promise<Stream & { token: string }> {
-        const id = crypto.randomUUID();
+        const id = randomUUID();
         (db.prepare("INSERT INTO data_streams (id, project_id, type, name, config) VALUES (?, ?, ?, ?, ?)") as unknown as DbAny).run(
             id, projectId, type, name, JSON.stringify(config)
         );
@@ -83,13 +84,11 @@ export class DbService {
             // console.warn("Embedding failed", _e);
         }
 
-        const id = crypto.randomUUID();
+        const id = randomUUID();
         const metadataStr = JSON.stringify(metadata);
 
         // Manual Transaction
-        try {
-            (db.prepare("BEGIN") as unknown as DbAny).run();
-
+        const insertTx = db.transaction(() => {
             // 1. Insert into logs
             (db.prepare("INSERT INTO logs (id, stream_id, content, metadata) VALUES (?, ?, ?, ?)") as unknown as DbAny).run(
                 id, streamId, content, metadataStr
@@ -104,10 +103,11 @@ export class DbService {
                 const vectorJson = JSON.stringify(embedding);
                 (db.prepare("INSERT INTO vec_logs(rowid, embedding) VALUES (?, ?)") as unknown as DbAny).run(rowid, vectorJson);
             }
+        });
 
-            (db.prepare("COMMIT") as unknown as DbAny).run();
+        try {
+            insertTx();
         } catch (e) {
-            (db.prepare("ROLLBACK") as unknown as DbAny).run();
             throw e;
         }
 

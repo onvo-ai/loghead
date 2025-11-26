@@ -1,30 +1,33 @@
-import { parseArgs } from "@std/cli/parse-args";
-import { TextLineStream } from "@std/streams";
+#!/usr/bin/env node
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
+import readline from "readline";
 
 async function main() {
-    const args = parseArgs(Deno.args, {
-        string: ["token", "api"],
-        default: {
-            api: "http://localhost:4567"
-        }
-    });
+    const argv = await yargs(hideBin(process.argv))
+        .option("token", { type: "string", description: "Stream token" })
+        .option("api", { type: "string", default: "http://localhost:4567", description: "API URL" })
+        .help()
+        .parse();
 
-    const token = args.token || Deno.env.get("LOGHEAD_TOKEN");
+    const token = argv.token || process.env.LOGHEAD_TOKEN;
     if (!token) {
         console.error("Error: Missing token. Provide --token or set LOGHEAD_TOKEN env var.");
-        Deno.exit(1);
+        process.exit(1);
     }
 
-    const apiUrl = args.api.replace(/\/$/, "");
+    const apiUrl = (argv.api as string).replace(/\/$/, "");
     console.error(`[Loghead Terminal] Forwarding stdin to ${apiUrl}...`);
 
-    const reader = Deno.stdin.readable
-        .pipeThrough(new TextDecoderStream())
-        .pipeThrough(new TextLineStream());
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+        terminal: false
+    });
 
     // Buffer logs to send in batches
     let batch: string[] = [];
-    let timer: number | null = null;
+    let timer: NodeJS.Timeout | null = null;
 
     const flush = async () => {
         if (batch.length === 0) return;
@@ -34,17 +37,9 @@ async function main() {
         timer = null;
 
         try {
-            // Parse token to get streamId if possible, otherwise we rely on the server validating the token
-            // Actually the API requires 'streamId' in the body. 
-            // But since we have a token, we can extract the streamId (sub) from it if it's a JWT?
-            // OR we pass the token and let the server figure it out? 
-            // Current API: POST /api/ingest { streamId, logs }
-            // And requires Auth header.
-            // We need to extract streamId from the JWT payload.
-
             const parts = token.split(".");
             if (parts.length !== 3) throw new Error("Invalid JWT token format");
-            const payload = JSON.parse(atob(parts[1]));
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
             const streamId = payload.sub;
 
             const res = await fetch(`${apiUrl}/api/ingest`, {
@@ -67,23 +62,22 @@ async function main() {
         }
     };
 
-    for await (const line of reader) {
-        if (!line.trim()) continue;
+    rl.on('line', (line) => {
+        if (!line.trim()) return;
 
-        // Print to stdout so it acts like a transparent pipe
-        console.log(line);
+        console.log(line); // Pass through
 
         batch.push(line);
         if (batch.length >= 10) {
-            await flush();
+            flush(); // Async but we don't await in event loop
         } else if (!timer) {
             timer = setTimeout(flush, 1000);
         }
-    }
+    });
 
-    await flush();
+    rl.on('close', () => {
+        flush();
+    });
 }
 
-if (import.meta.main) {
-    main();
-}
+main();

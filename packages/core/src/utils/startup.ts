@@ -1,13 +1,15 @@
-import { colors } from "@cliffy/ansi/colors";
-import { OllamaService } from "../services/ollama.ts";
-import { migrate } from "../db/migrate.ts";
+import chalk from "chalk";
+import { OllamaService } from "../services/ollama";
+import { migrate } from "../db/migrate";
 
 export async function ensureInfrastructure() {
-    console.log(colors.bold.blue("\n🚀Performing system preflight checks..."));
+    console.log(chalk.bold.blue("\n🚀Performing system preflight checks..."));
 
     // 1. Check Local Ollama
     await checkStep("Checking local Ollama...", async () => {
         try {
+            // Node.js fetch needs global fetch or polyfill in Node 18+. 
+            // Assuming Node 18+ which has fetch.
             const response = await fetch("http://localhost:11434/api/tags");
             if (!response.ok) throw new Error("Ollama is not running");
         } catch {
@@ -18,9 +20,9 @@ export async function ensureInfrastructure() {
     // 2. Check Database & Migrations (SQLite)
     await checkStep("Initializing database...", async () => {
         try {
-            await migrate(false);
+            migrate(false);
         } catch (e) {
-            console.log(colors.yellow("\n   ➤ Migration failed..."));
+            console.log(chalk.yellow("\n   ➤ Migration failed..."));
             throw e;
         }
     });
@@ -31,22 +33,20 @@ export async function ensureInfrastructure() {
         await ollama.ensureModel();
     });
 
-    console.log(`${colors.green("✔")} System preflight checks complete`);
+    console.log(`${chalk.green("✔")} System preflight checks complete`);
 }
 
 async function checkStep(name: string, action: () => Promise<void>) {
-    const encoder = new TextEncoder();
-
     // Print pending state
-    await Deno.stdout.write(encoder.encode(`${colors.cyan("○")} ${name}`));
+    process.stdout.write(`${chalk.cyan("○")} ${name}`);
 
     try {
         await action();
         // Clear line and print success
-        await Deno.stdout.write(encoder.encode(`\r${colors.green("✔")} ${name}      \n`));
+        process.stdout.write(`\r${chalk.green("✔")} ${name}      \n`);
     } catch (e) {
-        await Deno.stdout.write(encoder.encode(`\r${colors.red("✖")} ${name}\n`));
-        console.error(colors.red(`   Error: ${e instanceof Error ? e.message : e}`));
-        Deno.exit(1);
+        process.stdout.write(`\r${chalk.red("✖")} ${name}\n`);
+        console.error(chalk.red(`   Error: ${e instanceof Error ? e.message : e}`));
+        process.exit(1);
     }
 }
