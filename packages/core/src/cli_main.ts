@@ -18,7 +18,7 @@ async function main() {
             console.log("Initializing database...");
             await migrate();
         })
-        .command("start", "Start API Server", {}, async () => {
+        .command(["start", "$0"], "Start API Server", {}, async () => {
             console.log("Ensuring database is initialized...");
             await migrate(false); // Run migrations silently
 
@@ -45,6 +45,10 @@ async function main() {
                 .command("add <name>", "Add project", {}, (argv) => {
                     const p = db.createProject(argv.name as string);
                     console.log(`Project created: ${p.id}`);
+                })
+                .command("delete <id>", "Delete project", {}, (argv) => {
+                    db.deleteProject(argv.id as string);
+                    console.log(`Project deleted: ${argv.id}`);
                 });
         })
         .command("streams <cmd> [type] [name]", "Manage streams", (yargs) => {
@@ -67,9 +71,15 @@ async function main() {
                     console.log(`Stream created: ${s.id}`);
                     console.log(`Token: ${s.token}`);
                 })
-                .command("token <streamId>", "Get token for stream", {}, async (argv) => {
-                    const token = await auth.createStreamToken(argv.streamId as string);
+                .command("token", "Get token for stream", {
+                    stream: { type: "string", demandOption: true }
+                }, async (argv) => {
+                    const token = await auth.createStreamToken(argv.stream as string);
                     console.log(`Token: ${token}`);
+                })
+                .command("delete <id>", "Delete stream", {}, (argv) => {
+                    db.deleteStream(argv.id as string);
+                    console.log(`Stream deleted: ${argv.id}`);
                 });
         })
         .demandCommand(1)

@@ -6,7 +6,11 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const API_URL = process.env.LOGHEAD_API_URL || "http://localhost:4567/api";
+let baseUrl = process.env.LOGHEAD_API_URL || "http://localhost:4567";
+if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+if (baseUrl.endsWith("/api")) baseUrl = baseUrl.slice(0, -4);
+
+const API_URL = `${baseUrl}/api`;
 
 async function fetchApi(path: string, options: RequestInit = {}) {
     const url = `${API_URL}${path}`;

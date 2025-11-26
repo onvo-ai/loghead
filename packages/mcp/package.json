@@ -1,6 +1,6 @@
 {
   "name": "@loghead/mcp",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Standalone MCP Server for Loghead",
   "repository": {
     "type": "git",

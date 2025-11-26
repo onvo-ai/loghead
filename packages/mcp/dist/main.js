@@ -9,7 +9,12 @@ const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const zod_1 = require("zod");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
-const API_URL = process.env.LOGHEAD_API_URL || "http://localhost:4567/api";
+let baseUrl = process.env.LOGHEAD_API_URL || "http://localhost:4567";
+if (baseUrl.endsWith("/"))
+    baseUrl = baseUrl.slice(0, -1);
+if (baseUrl.endsWith("/api"))
+    baseUrl = baseUrl.slice(0, -4);
+const API_URL = `${baseUrl}/api`;
 async function fetchApi(path, options = {}) {
     const url = `${API_URL}${path}`;
     const res = await fetch(url, options);

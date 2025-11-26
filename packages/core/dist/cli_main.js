@@ -20,7 +20,7 @@ async function main() {
         console.log("Initializing database...");
         await (0, migrate_1.migrate)();
     })
-        .command("start", "Start API Server", {}, async () => {
+        .command(["start", "$0"], "Start API Server", {}, async () => {
         console.log("Ensuring database is initialized...");
         await (0, migrate_1.migrate)(false); // Run migrations silently
         const token = await auth.getOrCreateMcpToken();
@@ -44,6 +44,10 @@ async function main() {
             .command("add <name>", "Add project", {}, (argv) => {
             const p = db.createProject(argv.name);
             console.log(`Project created: ${p.id}`);
+        })
+            .command("delete <id>", "Delete project", {}, (argv) => {
+            db.deleteProject(argv.id);
+            console.log(`Project deleted: ${argv.id}`);
         });
     })
         .command("streams <cmd> [type] [name]", "Manage streams", (yargs) => {
@@ -66,9 +70,15 @@ async function main() {
             console.log(`Stream created: ${s.id}`);
             console.log(`Token: ${s.token}`);
         })
-            .command("token <streamId>", "Get token for stream", {}, async (argv) => {
-            const token = await auth.createStreamToken(argv.streamId);
+            .command("token", "Get token for stream", {
+            stream: { type: "string", demandOption: true }
+        }, async (argv) => {
+            const token = await auth.createStreamToken(argv.stream);
             console.log(`Token: ${token}`);
+        })
+            .command("delete <id>", "Delete stream", {}, (argv) => {
+            db.deleteStream(argv.id);
+            console.log(`Stream deleted: ${argv.id}`);
         });
     })
         .demandCommand(1)

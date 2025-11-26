@@ -20,6 +20,8 @@ Before you start, make sure you have:
 The core server handles the database and API.
 
 ```bash
+npx @loghead/core
+# OR
 npx @loghead/core start
 ```
 
@@ -28,6 +30,7 @@ This command will:
 - Initialize the local SQLite database (`loggerhead.db`).
 - Start the API server on port `4567`.
 - Print an MCP Server Token.
+- Launch the Terminal UI for viewing logs.
 
 ### 2. Connect Your AI Tool (MCP)
 
@@ -44,7 +47,7 @@ Edit your `claude_desktop_config.json` (usually in `~/Library/Application Suppor
       "command": "npx",
       "args": ["-y", "@loghead/mcp"],
       "env": {
-        "LOGHEAD_API_URL": "http://localhost:4567/api",
+        "LOGHEAD_API_URL": "http://localhost:4567",
         "LOGHEAD_TOKEN": "<YOUR_MCP_TOKEN>"
       }
     }
@@ -63,7 +66,7 @@ Add the MCP server in your Windsurf configuration:
       "command": "npx",
       "args": ["-y", "@loghead/mcp"],
       "env": {
-        "LOGHEAD_API_URL": "http://localhost:4567/api",
+        "LOGHEAD_API_URL": "http://localhost:4567",
         "LOGHEAD_TOKEN": "<YOUR_MCP_TOKEN>"
       }
     }
@@ -79,7 +82,7 @@ Go to **Settings > MCP** and add a new server:
 - **Type**: `stdio`
 - **Command**: `npx -y @loghead/mcp`
 - **Environment Variables**:
-  - `LOGHEAD_API_URL`: `http://localhost:4567/api`
+  - `LOGHEAD_API_URL`: `http://localhost:4567`
   - `LOGHEAD_TOKEN`: `<YOUR_MCP_TOKEN>`
 
 ### 3. Create a Project
@@ -134,6 +137,66 @@ Once connected, you can ask your AI assistant questions about your logs:
 - "What errors appeared in the build logs recently?"
 - "Find any database connection timeouts in the backend logs."
 - "Why did the application crash?"
+
+## CLI Commands Reference
+
+The `@loghead/core` package provides several commands to manage your log infrastructure.
+
+### General
+
+- **Start Server & UI**:
+  ```bash
+  npx @loghead/core
+  ```
+- **Initialize Database**:
+  ```bash
+  npx @loghead/core init
+  ```
+- **Start UI Only**:
+  ```bash
+  npx @loghead/core ui
+  ```
+
+### Projects
+
+- **List Projects**:
+  ```bash
+  npx @loghead/core projects list
+  ```
+- **Add Project**:
+  ```bash
+  npx @loghead/core projects add "My Project Name"
+  ```
+- **Delete Project**:
+  ```bash
+  npx @loghead/core projects delete <PROJECT_ID>
+  ```
+
+### Streams
+
+- **List Streams**:
+  ```bash
+  npx @loghead/core streams list --project <PROJECT_ID>
+  ```
+- **Add Stream**:
+
+  ```bash
+  # Basic
+  npx @loghead/core streams add <TYPE> <NAME> --project <PROJECT_ID>
+
+  # Examples
+  npx @loghead/core streams add terminal "My Terminal" --project <PROJECT_ID>
+  npx @loghead/core streams add docker "My Container" --project <PROJECT_ID> --container <CONTAINER_NAME>
+  ```
+
+- **Get Stream Token**:
+  ```bash
+  npx @loghead/core streams token --stream <STREAM_ID>
+  ```
+- **Delete Stream**:
+  ```bash
+  npx @loghead/core streams delete <STREAM_ID>
+  ```
 
 ## Sample Calculator App
 
@@ -223,3 +286,55 @@ To build from source:
    ```bash
    npm run build
    ```
+
+## API Reference
+
+The `@loghead/core` server exposes a REST API on port `4567` (by default).
+
+### Projects
+
+- **List Projects**
+  - `GET /api/projects`
+- **Create Project**
+  - `POST /api/projects`
+  - Body: `{ "name": "string" }`
+- **Delete Project**
+  - `DELETE /api/projects/:id`
+
+### Streams
+
+- **List Streams**
+  - `GET /api/streams?projectId=<PROJECT_ID>`
+- **Create Stream**
+  - `POST /api/streams/create`
+  - Body: `{ "projectId": "string", "type": "string", "name": "string", "config": {} }`
+- **Delete Stream**
+  - `DELETE /api/streams/:id`
+
+### Logs
+
+- **Get Logs**
+
+  - `GET /api/logs`
+  - Query Params:
+    - `streamId`: (Required) The Stream ID.
+    - `q`: (Optional) Semantic search query.
+    - `page`: (Optional) Page number (default 1).
+    - `pageSize`: (Optional) Logs per page (default 100, max 1000).
+
+- **Ingest Logs**
+  - `POST /api/ingest`
+  - Headers: `Authorization: Bearer <STREAM_TOKEN>`
+  - Body:
+    ```json
+    {
+      "streamId": "string",
+      "logs": [
+        {
+          "content": "log message",
+          "metadata": { "level": "info" }
+        }
+      ]
+    }
+    ```
+    _Note: `logs` can also be a single string or object._

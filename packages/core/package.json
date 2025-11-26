@@ -1,6 +1,6 @@
 {
   "name": "@loghead/core",
-  "version": "0.1.14",
+  "version": "0.1.17",
   "description": "Core API and Database for Loghead",
   "repository": {
     "type": "git",
