@@ -1,0 +1,25 @@
+{
+  "name": "@loghead/mcp",
+  "version": "0.1.0",
+  "description": "Standalone MCP Server for Loghead",
+  "bin": {
+    "loghead-mcp": "./bin/loghead-mcp"
+  },
+  "files": [
+    "bin"
+  ],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "scripts": {
+    "postinstall": "echo 'Note: This package contains a prebuilt binary for macOS ARM64.'"
+  },
+  "author": "Onvo AI",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

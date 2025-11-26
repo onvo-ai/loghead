@@ -1,9 +1,9 @@
 {
-  "name": "@onvo-ai/loggerhead",
+  "name": "@loghead/core",
   "version": "0.1.0",
   "description": "Smart log aggregation tool and MCP server",
   "bin": {
-    "loggerhead": "./bin/loggerhead"
+    "loghead": "./bin/loghead"
   },
   "files": [
     "bin"
@@ -19,11 +19,14 @@
   },
   "author": "Onvo AI",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/onvo-ai/loggerhead.git"
+    "url": "git+https://github.com/onvo-ai/loghead.git"
   },
   "bugs": {
-    "url": "https://github.com/onvo-ai/loggerhead/issues"
+    "url": "https://github.com/onvo-ai/loghead/issues"
   }
 }

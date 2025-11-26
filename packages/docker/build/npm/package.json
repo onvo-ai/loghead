@@ -1,0 +1,16 @@
+{
+  "name": "@loghead/docker",
+  "version": "0.1.0",
+  "description": "Docker log ingestor for Loghead",
+  "bin": {
+    "loghead-docker": "./bin/index.js"
+  },
+  "dependencies": {
+    "child_process": "*"
+  },
+  "author": "Onvo AI",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

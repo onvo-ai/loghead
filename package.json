@@ -1,17 +1,23 @@
 {
-  "name": "loggerhead",
+  "name": "loghead",
   "version": "0.1.0",
   "description": "Smart log aggregation tool and MCP server",
-  "bin": {
-    "loggerhead": "./bin/loggerhead.js"
-  },
   "scripts": {
-    "build": "dnt"
+    "build": "dnt",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "files": [
     "bin",
     "src"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onvo-ai/loghead.git"
+  },
   "author": "Onvo AI",
-  "license": "MIT"
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/onvo-ai/loghead/issues"
+  },
+  "homepage": "https://github.com/onvo-ai/loghead#readme"
 }

@@ -15,26 +15,26 @@ async function build() {
 
     // 2. Copy Binary
     // Ensure the binary exists
-    const binarySource = "./cli/build/loggerhead";
+    const binarySource = "./packages/core/build/loghead";
     try {
         await Deno.stat(binarySource);
     } catch {
-        console.error("Binary not found at ./cli/build/loggerhead. Please run 'deno task build' in cli/ first.");
+        console.error("Binary not found at ./packages/core/build/loghead. Please run 'deno task build' in packages/core/ first.");
         Deno.exit(1);
     }
 
-    const binaryDest = `${binDir}/loggerhead`;
+    const binaryDest = `${binDir}/loghead`;
     await Deno.copyFile(binarySource, binaryDest);
     // Ensure executable
     await Deno.chmod(binaryDest, 0o755);
 
     // 3. Create package.json
     const packageJson = {
-        name: "@onvo-ai/loggerhead",
+        name: "@loghead/core",
         version: "0.1.0",
         description: "Smart log aggregation tool and MCP server",
         bin: {
-            "loggerhead": "./bin/loggerhead"
+            "loghead": "./bin/loghead"
         },
         files: [
             "bin"
@@ -46,12 +46,13 @@ async function build() {
         },
         author: "Onvo AI",
         license: "MIT",
+        publishConfig: { "access": "public" },
         repository: {
             type: "git",
-            url: "git+https://github.com/onvo-ai/loggerhead.git"
+            url: "git+https://github.com/onvo-ai/loghead.git"
         },
         bugs: {
-            url: "https://github.com/onvo-ai/loggerhead/issues"
+            url: "https://github.com/onvo-ai/loghead/issues"
         }
     };
 

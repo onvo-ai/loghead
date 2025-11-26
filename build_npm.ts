@@ -5,8 +5,8 @@ await emptyDir("./npm");
 await build({
     entryPoints: [{
         kind: "bin",
-        name: "loggerhead",
-        path: "./cli/src/main.ts",
+        name: "loghead",
+        path: "./packages/core/src/cli_main.ts",
     }],
     outDir: "./npm",
     shims: {
@@ -15,16 +15,16 @@ await build({
     },
     package: {
         // package.json properties
-        name: "@onvo-ai/loggerhead",
+        name: "@loghead/core",
         version: "0.1.0",
         description: "Smart log aggregation tool and MCP server",
         license: "MIT",
         repository: {
             type: "git",
-            url: "git+https://github.com/onvo-ai/loggerhead.git",
+            url: "git+https://github.com/onvo-ai/loghead.git",
         },
         bugs: {
-            url: "https://github.com/onvo-ai/loggerhead/issues",
+            url: "https://github.com/onvo-ai/loghead/issues",
         },
     },
     postBuild() {

@@ -1,0 +1,16 @@
+{
+  "name": "@loghead/terminal",
+  "version": "0.1.0",
+  "description": "Terminal log ingestor for Loghead",
+  "bin": {
+    "loghead-terminal": "./bin/index.js"
+  },
+  "scripts": {
+    "start": "node bin/index.js"
+  },
+  "author": "Onvo AI",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

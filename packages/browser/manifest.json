@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Loghead Collector",
+  "version": "1.0",
+  "description": "Collects browser console logs and sends them to Loghead.",
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://localhost:4567/*",
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
