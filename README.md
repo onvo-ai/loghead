@@ -148,14 +148,6 @@ The `@loghead/core` package provides several commands to manage your log infrast
   ```bash
   npx @loghead/core
   ```
-- **Initialize Database**:
-  ```bash
-  npx @loghead/core init
-  ```
-- **Start UI Only**:
-  ```bash
-  npx @loghead/core ui
-  ```
 
 ### Projects
 
@@ -191,7 +183,7 @@ The `@loghead/core` package provides several commands to manage your log infrast
 
 - **Get Stream Token**:
   ```bash
-  npx @loghead/core streams token --stream <STREAM_ID>
+  npx @loghead/core streams token <STREAM_ID>
   ```
 - **Delete Stream**:
   ```bash

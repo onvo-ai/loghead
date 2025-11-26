@@ -14,10 +14,6 @@ const auth = new AuthService();
 
 async function main() {
     const argv = await yargs(hideBin(process.argv))
-        .command("init", "Initialize/Migrate database", {}, async () => {
-            console.log("Initializing database...");
-            await migrate();
-        })
         .command(["start", "$0"], "Start API Server", {}, async () => {
             console.log("Ensuring database is initialized...");
             await migrate(false); // Run migrations silently
@@ -28,11 +24,6 @@ async function main() {
             await startApiServer(db);
 
             // Start TUI (this will clear screen and take over)
-            await startTui(db, token);
-            process.exit(0);
-        })
-        .command("ui", "Start Terminal UI", {}, async () => {
-            const token = await auth.getOrCreateMcpToken();
             await startTui(db, token);
             process.exit(0);
         })
@@ -71,10 +62,8 @@ async function main() {
                     console.log(`Stream created: ${s.id}`);
                     console.log(`Token: ${s.token}`);
                 })
-                .command("token", "Get token for stream", {
-                    stream: { type: "string", demandOption: true }
-                }, async (argv) => {
-                    const token = await auth.createStreamToken(argv.stream as string);
+                .command("token <streamId>", "Get token for stream", {}, async (argv) => {
+                    const token = await auth.createStreamToken(argv.streamId as string);
                     console.log(`Token: ${token}`);
                 })
                 .command("delete <id>", "Delete stream", {}, (argv) => {
