@@ -1,0 +1,35 @@
+name: Publish Packages
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          registry-url: 'https://npm.pkg.github.com'
+          # The scope here should match your package names.
+          # If packages are @loghead/..., scope is @loghead.
+          # If @onvo-ai/..., scope is @onvo-ai.
+          # We'll omit specific scope here and rely on package.json publishConfig or .npmrc
+          
+      - name: Install Dependencies
+        run: node scripts/build.js # This runs npm install in all packages
+
+      - name: Publish
+        run: node scripts/deploy.js
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
