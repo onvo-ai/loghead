@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const dbPath = process.env.LOGHEAD_DB_PATH || "loghead.db";
+console.log(`[DB] Using database at: ${path.resolve(dbPath)}`);
 
 const db = new Database(dbPath);
 

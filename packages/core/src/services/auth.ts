@@ -58,11 +58,16 @@ export class AuthService {
         if (!this.secretKey) throw new Error("Auth not initialized");
 
         try {
+            // console.log(`[Auth] Verifying token with secret: ${this.secretKey.substring(0, 10)}...`);
             const payload = jwt.verify(token, this.secretKey, { issuer: "loghead", algorithms: ["HS512"] }) as jwt.JwtPayload;
             if (!payload.sub) return null;
             return { streamId: payload.sub };
         } catch (e) {
             console.error("Token verification failed:", e);
+            if (e instanceof Error && e.message === "invalid signature") {
+                console.error("[Auth] Secret key mismatch. Ensure the server is using the same database (and secret) as when the token was generated.");
+                console.error(`[Auth] Current secret starts with: ${this.secretKey?.substring(0, 8)}...`);
+            }
             return null;
         }
     }

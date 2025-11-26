@@ -39,9 +39,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.db = void 0;
 const better_sqlite3_1 = __importDefault(require("better-sqlite3"));
 const sqliteVec = __importStar(require("sqlite-vec"));
+const path_1 = __importDefault(require("path"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const dbPath = process.env.LOGHEAD_DB_PATH || "loghead.db";
+console.log(`[DB] Using database at: ${path_1.default.resolve(dbPath)}`);
 const db = new better_sqlite3_1.default(dbPath);
 exports.db = db;
 // Load sqlite-vec extension

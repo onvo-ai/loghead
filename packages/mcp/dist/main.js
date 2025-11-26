@@ -76,6 +76,55 @@ async function main() {
             return { content: [{ type: "text", text: `Error: ${error}` }], isError: true };
         }
     });
+    server.tool("create_project", "Create a new project", { name: zod_1.z.string() }, async ({ name }) => {
+        try {
+            const project = await fetchApi("/projects", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name })
+            });
+            return { content: [{ type: "text", text: `Project created: ${project.id}` }] };
+        }
+        catch (e) {
+            return { content: [{ type: "text", text: `Error: ${e}` }], isError: true };
+        }
+    });
+    server.tool("delete_project", "Delete a project", { id: zod_1.z.string() }, async ({ id }) => {
+        try {
+            await fetchApi(`/projects/${id}`, { method: "DELETE" });
+            return { content: [{ type: "text", text: `Project deleted` }] };
+        }
+        catch (e) {
+            return { content: [{ type: "text", text: `Error: ${e}` }], isError: true };
+        }
+    });
+    server.tool("create_stream", "Create a new stream", {
+        projectId: zod_1.z.string(),
+        type: zod_1.z.string(),
+        name: zod_1.z.string(),
+        config: zod_1.z.any().optional()
+    }, async ({ projectId, type, name, config }) => {
+        try {
+            const stream = await fetchApi("/streams/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ projectId, type, name, config })
+            });
+            return { content: [{ type: "text", text: `Stream created: ${stream.id}\nToken: ${stream.token}` }] };
+        }
+        catch (e) {
+            return { content: [{ type: "text", text: `Error: ${e}` }], isError: true };
+        }
+    });
+    server.tool("delete_stream", "Delete a stream", { id: zod_1.z.string() }, async ({ id }) => {
+        try {
+            await fetchApi(`/streams/${id}`, { method: "DELETE" });
+            return { content: [{ type: "text", text: `Stream deleted` }] };
+        }
+        catch (e) {
+            return { content: [{ type: "text", text: `Error: ${e}` }], isError: true };
+        }
+    });
     const transport = new stdio_js_1.StdioServerTransport();
     await server.connect(transport);
     console.error("Loghead MCP Server running on stdio");

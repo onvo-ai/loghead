@@ -23,14 +23,18 @@ async function main() {
             await migrate(false); // Run migrations silently
 
             const token = await auth.getOrCreateMcpToken();
-            console.log(chalk.bold.yellow(`\n🔑 MCP Server Token:`));
-            console.log(chalk.dim("\nUse this token for the MCP Server or other admin integrations.\n"));
-            console.log(chalk.yellow(`${token}`));
 
+            // Start API Server (this sets up express listen)
             await startApiServer(db);
+
+            // Start TUI (this will clear screen and take over)
+            await startTui(db, token);
+            process.exit(0);
         })
         .command("ui", "Start Terminal UI", {}, async () => {
-            await startTui(db);
+            const token = await auth.getOrCreateMcpToken();
+            await startTui(db, token);
+            process.exit(0);
         })
         .command("projects <cmd> [name]", "Manage projects", (yargs) => {
             yargs
@@ -62,6 +66,10 @@ async function main() {
                     const s = await db.createStream(argv.project, argv.type as string, argv.name as string, config);
                     console.log(`Stream created: ${s.id}`);
                     console.log(`Token: ${s.token}`);
+                })
+                .command("token <streamId>", "Get token for stream", {}, async (argv) => {
+                    const token = await auth.createStreamToken(argv.streamId as string);
+                    console.log(`Token: ${token}`);
                 });
         })
         .demandCommand(1)

@@ -88,18 +88,22 @@ export class DbService {
         // Manual Transaction
         const insertTx = db.transaction(() => {
             // 1. Insert into logs
-            (db.prepare("INSERT INTO logs (id, stream_id, content, metadata) VALUES (?, ?, ?, ?)") as unknown as DbAny).run(
+            const info = (db.prepare("INSERT INTO logs (id, stream_id, content, metadata) VALUES (?, ?, ?, ?)") as unknown as DbAny).run(
                 id, streamId, content, metadataStr
             );
 
-            // 2. Get rowid
-            const rowInfo = (db.prepare("SELECT last_insert_rowid() as rowid") as unknown as DbAny).get();
-            const rowid = rowInfo.rowid;
+            // 2. Get rowid directly
+            const rowid = info.lastInsertRowid;
 
             // 3. Insert into vec_logs if embedding exists
             if (embedding && embedding.length > 0) {
+                if (embedding.length !== 1024) {
+                    console.warn(`[Warning] Embedding dimension mismatch. Expected 1024, got ${embedding.length}. Skipping vector index.`);
+                    return;
+                }
                 const vectorJson = JSON.stringify(embedding);
-                (db.prepare("INSERT INTO vec_logs(rowid, embedding) VALUES (?, ?)") as unknown as DbAny).run(rowid, vectorJson);
+                // Explicitly cast rowid to BigInt to ensure better-sqlite3 binds it as an INTEGER
+                (db.prepare("INSERT INTO vec_logs(rowid, embedding) VALUES (?, ?)") as unknown as DbAny).run(BigInt(rowid), vectorJson);
             }
         });
 

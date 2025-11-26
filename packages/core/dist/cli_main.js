@@ -12,7 +12,6 @@ const migrate_1 = require("./db/migrate");
 // import { ensureInfrastructure } from "./utils/startup"; // Might need adjustment
 const main_1 = require("./ui/main");
 const auth_1 = require("./services/auth");
-const chalk_1 = __importDefault(require("chalk"));
 const db = new db_1.DbService();
 const auth = new auth_1.AuthService();
 async function main() {
@@ -25,13 +24,16 @@ async function main() {
         console.log("Ensuring database is initialized...");
         await (0, migrate_1.migrate)(false); // Run migrations silently
         const token = await auth.getOrCreateMcpToken();
-        console.log(chalk_1.default.bold.yellow(`\n🔑 MCP Server Token:`));
-        console.log(chalk_1.default.dim("\nUse this token for the MCP Server or other admin integrations.\n"));
-        console.log(chalk_1.default.yellow(`${token}`));
+        // Start API Server (this sets up express listen)
         await (0, server_1.startApiServer)(db);
+        // Start TUI (this will clear screen and take over)
+        await (0, main_1.startTui)(db, token);
+        process.exit(0);
     })
         .command("ui", "Start Terminal UI", {}, async () => {
-        await (0, main_1.startTui)(db);
+        const token = await auth.getOrCreateMcpToken();
+        await (0, main_1.startTui)(db, token);
+        process.exit(0);
     })
         .command("projects <cmd> [name]", "Manage projects", (yargs) => {
         yargs
@@ -63,6 +65,10 @@ async function main() {
             const s = await db.createStream(argv.project, argv.type, argv.name, config);
             console.log(`Stream created: ${s.id}`);
             console.log(`Token: ${s.token}`);
+        })
+            .command("token <streamId>", "Get token for stream", {}, async (argv) => {
+            const token = await auth.createStreamToken(argv.streamId);
+            console.log(`Token: ${token}`);
         });
     })
         .demandCommand(1)

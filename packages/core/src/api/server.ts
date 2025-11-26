@@ -15,7 +15,7 @@ export async function startApiServer(db: DbService) {
 
     await auth.initialize();
 
-    console.log(chalk.bold.green(`💻 Server running on:\n`));
+    console.log(chalk.bold.green(`\n💻 MCP server running on:`));
     console.log(chalk.green(`http://localhost:${port}`));
 
     app.post("/api/ingest", async (req, res) => {
@@ -71,8 +71,16 @@ export async function startApiServer(db: DbService) {
     });
 
     app.post("/api/projects", (req, res) => {
-        const projects = db.listProjects();
-        res.json(projects);
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ error: "Name required" });
+        const project = db.createProject(name);
+        res.json(project);
+    });
+
+    app.delete("/api/projects/:id", (req, res) => {
+        const { id } = req.params;
+        db.deleteProject(id);
+        res.json({ success: true });
     });
 
     app.get("/api/streams", (req, res) => {
@@ -85,7 +93,18 @@ export async function startApiServer(db: DbService) {
         }
     });
 
+    app.delete("/api/streams/:id", (req, res) => {
+        const { id } = req.params;
+        db.deleteStream(id);
+        res.json({ success: true });
+    });
+
     app.post("/api/streams", (req, res) => {
+        // Deprecated or just listing? The previous code had this returning listStreams for POST?
+        // I'll remove it or keep it if CLI uses it?
+        // CLI uses db directly.
+        // MCP uses GET /api/streams
+        // I'll replace this with the actual CREATE logic to be RESTful, or keep /create
         const projectId = req.body.projectId;
         if (projectId) {
             const streams = db.listStreams(projectId);
@@ -97,7 +116,7 @@ export async function startApiServer(db: DbService) {
 
     app.post("/api/streams/create", async (req, res) => {
         const body = req.body;
-        const stream = await db.createStream(body.projectId, body.type, body.name, {});
+        const stream = await db.createStream(body.projectId, body.type, body.name, body.config || {});
         res.json(stream);
     });
 

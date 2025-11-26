@@ -135,11 +135,9 @@ Once connected, you can ask your AI assistant questions about your logs:
 - "Find any database connection timeouts in the backend logs."
 - "Why did the application crash?"
 
-## Sample Apps
+## Sample Calculator App
 
 We provide a unified **Calculator App** in `sample_apps/calculator_app` that combines a Backend API, Frontend UI, and CLI capabilities to help you test all of Loghead's features in one place.
-
-### The Calculator App
 
 This app runs an Express.js server that performs calculations and logs them. It includes a web interface and can be containerized with Docker.
 
