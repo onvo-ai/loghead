@@ -85,6 +85,31 @@ Go to **Settings > MCP** and add a new server:
   - `LOGHEAD_API_URL`: `http://localhost:4567`
   - `LOGHEAD_TOKEN`: `<YOUR_MCP_TOKEN>`
 
+#### VS Code (MCP Extension)
+
+To use Loghead as an MCP server in VS Code, add the following configuration to your `mcp.json` (usually found in your user settings directory):
+
+```jsonc
+{
+  "servers": {
+    "loghead": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@loghead/mcp"
+      ],
+      "env": {
+        "LOGHEAD_API_URL": "http://localhost:4567",
+        "LOGHEAD_TOKEN": "<YOUR_MCP_TOKEN>"
+      }
+    }
+  }
+}
+```
+
+Replace `<YOUR_MCP_TOKEN>` with the token printed by the Loghead server.
+
+This enables VS Code to connect to Loghead via MCP for log search and retrieval.
 ### 3. Create a Project
 
 You can manage projects via the CLI (in a separate terminal):
@@ -97,6 +122,11 @@ npx @loghead/core projects add "My Awesome App"
 ### 4. Add a Log Stream
 
 Create a stream to pipe logs into.
+*For Terminal Output During dev:**
+Add this in your project's package.json in script
+```bash
+dev:log": "node server.js | npx @loghead/terminal --token <STREAM-TOKEN>
+# Copy the Stream Token returned
 
 **For Terminal Output:**
 
