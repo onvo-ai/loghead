@@ -121,12 +121,8 @@ npx @loghead/core projects add "My Awesome App"
 
 ### 4. Add a Log Stream
 
+
 Create a stream to pipe logs into.
-*For Terminal Output During dev:**
-Add this in your project's package.json in script
-```bash
-dev:log": "node server.js | npx @loghead/terminal --token <STREAM-TOKEN>
-# Copy the Stream Token returned
 
 **For Terminal Output:**
 
@@ -145,6 +141,14 @@ npx @loghead/core streams add docker --project <PROJECT_ID> --name "Backend API"
 ### 5. Ingest Logs
 
 Now, feed logs into the stream using the ingestor tools.
+**Add directly to project:**
+
+```bash
+# Add to package.json's script of your project
+dev:log": "<commad-to-start-your-project> | npx @loghead/terminal --token <STREAM-TOKEN>
+#Add the token
+```
+
 
 **Terminal Pipe:**
 
