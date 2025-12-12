@@ -1,5 +1,5 @@
 // Check config and inject if enabled
-chrome.storage.local.get(['serverUrl', 'streamId', 'enabled'], (config) => {
+chrome.storage.local.get(['serverUrl', 'streamId', 'enabled', 'token'], (config) => {
   if (config.enabled !== false && config.streamId && config.serverUrl) {
     injectScript(config);
   }
@@ -18,7 +18,7 @@ function injectScript(config) {
 }
 
 function sendToServer(payload, config) {
-  const { serverUrl, streamId } = config;
+  const { serverUrl, streamId, token } = config;
   const endpoint = `${serverUrl}/api/ingest`;
 
   const logContent = `[${payload.level}] ${payload.args.join(' ')}`;
@@ -26,6 +26,7 @@ function sendToServer(payload, config) {
   chrome.runtime.sendMessage({
     type: 'PROXY_LOG_INGEST',
     endpoint: endpoint,
+    token: token,
     payload: {
       streamId: streamId,
       logs: {
@@ -41,7 +42,7 @@ function sendToServer(payload, config) {
   }, (response) => {
     if (!response || !response.success) {
       // Silent fail or minimal error logging
-      // console.error("[Loghead] Send failed:", response ? response.error : "Unknown error");
+      console.error("[Loghead] Send failed:", response ? response.error : "Unknown error");
     }
   });
 }

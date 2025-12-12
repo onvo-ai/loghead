@@ -52,14 +52,23 @@ document.addEventListener('DOMContentLoaded', () => {
         connectedInfo.textContent = 'Stream ID: ' + streamId;
     }
 
-    async function mcpRequest(method, params = {}) {
+    async function mcpRequest(endpointPath, params = {}, method = 'POST') {
         const url = serverUrlInput.value;
-        const endpoint = `${url}/api/${method}`;
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(params)
-        });
+        let endpoint = `${url}/api/${endpointPath}`;
+
+        const options = {
+            method: method,
+            headers: { 'Content-Type': 'application/json' }
+        };
+
+        if (method === 'GET') {
+            const searchParams = new URLSearchParams(params);
+            endpoint += `?${searchParams.toString()}`;
+        } else {
+            options.body = JSON.stringify(params);
+        }
+
+        const response = await fetch(endpoint, options);
         if (!response.ok) throw new Error('Server request failed');
         return await response.json();
     }
@@ -67,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     nextBtn.addEventListener('click', async () => {
         statusDiv.textContent = 'Connecting...';
         try {
-            const projects = await mcpRequest('projects', {});
+            const projects = await mcpRequest('projects', {}, 'GET');
             statusDiv.textContent = '';
             showStep2();
 
@@ -88,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const projectId = projectSelect.value;
         streamSelect.innerHTML = '<option value="" disabled selected>Loading...</option>';
         try {
-            const streams = await mcpRequest('streams', { projectId });
+            const streams = await mcpRequest('streams', { projectId }, 'GET');
 
             streamSelect.innerHTML = '<option value="" disabled selected>Select a Browser Stream</option><option value="new">-- Create New Stream --</option>';
 
@@ -133,6 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const opt = document.createElement('option');
             opt.value = newStream.id;
             opt.textContent = newStream.name;
+            if (newStream.token) {
+                opt.dataset.token = newStream.token;
+            }
 
             streamSelect.insertBefore(opt, streamSelect.lastElementChild);
             streamSelect.value = newStream.id;
@@ -146,15 +158,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    connectBtn.addEventListener('click', () => {
+    connectBtn.addEventListener('click', async () => {
         const streamId = streamSelect.value;
         if (!streamId || streamId === 'new') return;
+
+        statusDiv.textContent = 'Connecting...';
+
+        let token = null;
+        const selectedOption = streamSelect.options[streamSelect.selectedIndex];
+
+        // If we have a token in the dataset (newly created), use it.
+        // Otherwise, fetch a new one from the server.
+        if (selectedOption.dataset.token) {
+            token = selectedOption.dataset.token;
+        } else {
+            try {
+                const resp = await mcpRequest(`streams/${streamId}/token`, {}, 'GET');
+                if (resp && resp.token) {
+                    token = resp.token;
+                }
+            } catch (e) {
+                statusDiv.textContent = 'Error getting token: ' + e.message;
+                return;
+            }
+        }
 
         const config = {
             serverUrl: serverUrlInput.value,
             streamId: streamId,
             enabled: true
         };
+
+        if (token) {
+            config.token = token;
+        }
 
         chrome.storage.local.set(config, () => {
             showConnectedState(streamId);

@@ -15,9 +15,9 @@ Before you start, make sure you have:
 
 ## Setup Guide
 
-### 1. Start the Server
+### 1. Start the Core Server
 
-The core server handles the database and API.
+The **Core Server** (`@loghead/core`) manages the database, API, and web interface. You must have this running in a background terminal for Loghead to work.
 
 ```bash
 npx @loghead/core
@@ -28,13 +28,15 @@ npx @loghead/core start
 This command will:
 
 - Initialize the local SQLite database (`loggerhead.db`).
-- Start the API server on port `4567`.
-- Print an MCP Server Token.
+- Start the REST API server on port `4567`.
+- Print a **Loghead Token**.
 - Launch the Terminal UI for viewing logs.
 
-### 2. Connect Your AI Tool (MCP)
+### 2. Connect Your AI Tool (MCP Server)
 
-You need to configure your AI assistant to talk to Loghead using the Model Context Protocol (MCP). Use the token printed in the previous step.
+The **MCP Server** (`@loghead/mcp`) is a separate lightweight bridge that allows your AI assistant to talk to the Core Server. You configure your AI tool to run this MCP server automatically.
+
+Use the **Loghead Token** printed in step 1.
 
 #### Claude Desktop
 
@@ -130,6 +132,22 @@ npm run build | npx @loghead/terminal --token <STREAM_TOKEN>
 npx @loghead/docker --token <STREAM_TOKEN> --container my-api-container
 ```
 
+**OpenTelemetry (OTLP):**
+
+You can point any OpenTelemetry exporter to Loghead.
+
+```javascript
+// Example: Node.js with @opentelemetry/exporter-logs-otlp-http
+const { OTLPLogExporter } = require("@opentelemetry/exporter-logs-otlp-http");
+
+const exporter = new OTLPLogExporter({
+  url: "http://localhost:4567/v1/logs",
+  headers: {
+    Authorization: "Bearer <STREAM_TOKEN>",
+  },
+});
+```
+
 ## How to Use with AI
 
 Once connected, you can ask your AI assistant questions about your logs:
@@ -179,6 +197,7 @@ The `@loghead/core` package provides several commands to manage your log infrast
   # Examples
   npx @loghead/core streams add terminal "My Terminal" --project <PROJECT_ID>
   npx @loghead/core streams add docker "My Container" --project <PROJECT_ID> --container <CONTAINER_NAME>
+  npx @loghead/core streams add opentelemetry "My OTLP Stream" --project <PROJECT_ID>
   ```
 
 - **Get Stream Token**:
@@ -315,6 +334,7 @@ The `@loghead/core` server exposes a REST API on port `4567` (by default).
     - `pageSize`: (Optional) Logs per page (default 100, max 1000).
 
 - **Ingest Logs**
+
   - `POST /api/ingest`
   - Headers: `Authorization: Bearer <STREAM_TOKEN>`
   - Body:
@@ -330,3 +350,8 @@ The `@loghead/core` server exposes a REST API on port `4567` (by default).
     }
     ```
     _Note: `logs` can also be a single string or object._
+
+- **Ingest OTLP Logs**
+  - `POST /v1/logs`
+  - Headers: `Authorization: Bearer <STREAM_TOKEN>`
+  - Body: Standard OTLP JSON payload.

@@ -17,6 +17,90 @@ async function startApiServer(db) {
     await auth.initialize();
     console.log(chalk_1.default.bold.green(`\n💻 MCP server running on:`));
     console.log(chalk_1.default.green(`http://localhost:${port}`));
+    // Helper to parse OTLP attributes
+    const parseOtlpAttributes = (attributes) => {
+        if (!Array.isArray(attributes))
+            return {};
+        const result = {};
+        for (const attr of attributes) {
+            if (attr.key && attr.value) {
+                // Extract value based on type (stringValue, intValue, boolValue, etc.)
+                const val = attr.value;
+                if (val.stringValue !== undefined)
+                    result[attr.key] = val.stringValue;
+                else if (val.intValue !== undefined)
+                    result[attr.key] = parseInt(val.intValue);
+                else if (val.doubleValue !== undefined)
+                    result[attr.key] = val.doubleValue;
+                else if (val.boolValue !== undefined)
+                    result[attr.key] = val.boolValue;
+                else if (val.arrayValue !== undefined)
+                    result[attr.key] = val.arrayValue; // Simplified
+                else if (val.kvlistValue !== undefined)
+                    result[attr.key] = val.kvlistValue; // Simplified
+                else
+                    result[attr.key] = val;
+            }
+        }
+        return result;
+    };
+    // OTLP Logs Ingestion Endpoint
+    app.post("/v1/logs", async (req, res) => {
+        try {
+            const authHeader = req.headers.authorization;
+            if (!authHeader || !authHeader.startsWith("Bearer ")) {
+                return res.status(401).json({ code: 16, message: "Unauthenticated" });
+            }
+            const token = authHeader.split(" ")[1];
+            const payload = await auth.verifyToken(token);
+            if (!payload || !payload.streamId) {
+                return res.status(401).json({ code: 16, message: "Invalid token" });
+            }
+            const streamId = payload.streamId;
+            const { resourceLogs } = req.body;
+            if (!resourceLogs || !Array.isArray(resourceLogs)) {
+                return res.status(400).json({ code: 3, message: "Invalid payload" });
+            }
+            let count = 0;
+            for (const resourceLog of resourceLogs) {
+                const resourceAttrs = parseOtlpAttributes(resourceLog.resource?.attributes);
+                if (resourceLog.scopeLogs) {
+                    for (const scopeLog of resourceLog.scopeLogs) {
+                        const scopeName = scopeLog.scope?.name;
+                        if (scopeLog.logRecords) {
+                            for (const log of scopeLog.logRecords) {
+                                let content = "";
+                                if (log.body?.stringValue)
+                                    content = log.body.stringValue;
+                                else if (log.body?.kvlistValue)
+                                    content = JSON.stringify(log.body.kvlistValue);
+                                else if (typeof log.body === 'string')
+                                    content = log.body; // Fallback
+                                const logAttrs = parseOtlpAttributes(log.attributes);
+                                // Merge attributes: Resource > Scope (if any) > Log
+                                const metadata = {
+                                    ...resourceAttrs,
+                                    ...logAttrs,
+                                    severity: log.severityText || log.severityNumber,
+                                    scope: scopeName,
+                                    timestamp: log.timeUnixNano
+                                };
+                                if (content) {
+                                    await db.addLog(streamId, content, metadata);
+                                    count++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            res.json({ partialSuccess: {}, logsIngested: count });
+        }
+        catch (e) {
+            console.error("OTLP Ingest error:", e);
+            res.status(500).json({ code: 13, message: String(e) });
+        }
+    });
     app.post("/api/ingest", async (req, res) => {
         try {
             const authHeader = req.headers.authorization;

@@ -101,7 +101,7 @@ export async function startTui(db: DbService, token: string) {
                         type: "list",
                         name: "type",
                         message: "Stream type:",
-                        choices: ["browser", "terminal", "docker"],
+                        choices: ["browser", "terminal", "docker", "opentelemetry"],
                         prefix: "💡"
                     }
                 ]);

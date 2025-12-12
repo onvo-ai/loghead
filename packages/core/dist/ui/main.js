@@ -94,7 +94,7 @@ async function startTui(db, token) {
                         type: "list",
                         name: "type",
                         message: "Stream type:",
-                        choices: ["browser", "terminal", "docker"],
+                        choices: ["browser", "terminal", "docker", "opentelemetry"],
                         prefix: "💡"
                     }
                 ]);
