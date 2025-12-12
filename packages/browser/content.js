@@ -1,6 +1,6 @@
 // Check config and inject if enabled
-chrome.storage.local.get(['serverUrl', 'streamId', 'enabled', 'token'], (config) => {
-  if (config.enabled !== false && config.streamId && config.serverUrl) {
+chrome.runtime.sendMessage({ type: 'GET_CONFIG' }, (config) => {
+  if (config && config.enabled !== false && config.streamId && config.serverUrl) {
     injectScript(config);
   }
 });

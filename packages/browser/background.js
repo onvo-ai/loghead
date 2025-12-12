@@ -11,6 +11,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
     }
 
+    if (message.type === 'GET_CONFIG') {
+        if (sender.tab && sender.tab.id) {
+            const key = `config_${sender.tab.id}`;
+            chrome.storage.local.get([key], (result) => {
+                sendResponse(result[key] || {});
+            });
+            return true; // Async response
+        } else {
+            sendResponse({});
+        }
+    }
+
     if (message.type === 'PROXY_LOG_INGEST') {
         const { endpoint, payload, token } = message;
 
